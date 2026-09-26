@@ -1,0 +1,93 @@
+{
+  "status": "PASS",
+  "operation": "append_decret_oea_2018_612",
+  "created_utc": "2026-07-21T16:24:48Z",
+  "embedding_model": "BAAI/bge-m3",
+  "normalize_embeddings": true,
+  "faiss_index_type": "IndexFlatIP",
+  "dimension": 1024,
+  "base_zip_sha256": "886eda5c33260499357e58560fc260553b253e8dfaf1a709698b44cf0c01fc3c",
+  "source_zip_sha256": "2ebd788bae2d43985e79a0d0c9620ee432166614a7bb2e5da232677c11fc5462",
+  "source_ready_member": "content/oea_articles_corpus/rag_index_ready.jsonl",
+  "source_ready_sha256": "57eb791bda7bb3ec7a8f71c318e6e753f41ec693af27bdbb0c46316f4b712c40",
+  "previous_records": 3117,
+  "added_records": 25,
+  "final_records": 3142,
+  "new_faiss_positions": {
+    "start": 3117,
+    "end": 3141
+  },
+  "records_per_source_id": {
+    "apia_guide_2017": 1082,
+    "apii_faq_tunisieindustrie": 234,
+    "startup_act_pack": 206,
+    "code_douanes_2016": 1595,
+    "decret_oea_2018_612": 25
+  },
+  "records_per_chunk_type": {
+    "text": 1368,
+    "table": 52,
+    "table_row": 387,
+    "list_item": 1334,
+    "asset_pointer": 1
+  },
+  "base_validation": {
+    "expected_sources": {
+      "apia_guide_2017": 1082,
+      "apii_faq_tunisieindustrie": 234,
+      "startup_act_pack": 206,
+      "code_douanes_2016": 1595
+    },
+    "expected_chunk_types": {
+      "text": 1343,
+      "table": 52,
+      "table_row": 387,
+      "list_item": 1334,
+      "asset_pointer": 1
+    },
+    "faiss_positions_sequential": true,
+    "duplicate_ids": 0,
+    "nested_canonical_duplicates": 0
+  },
+  "new_source_validation": {
+    "source_id": "decret_oea_2018_612",
+    "records": 25,
+    "chunk_types": {
+      "text": 25
+    },
+    "articles": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25
+    ],
+    "qa_status": "PASS",
+    "qa_verdict": "PASS",
+    "id_collisions_with_base": 0
+  },
+  "index_sha256_before": "cf0a9e03778cda84685d7859aa3345050dd376efd3035467feeb64ee1d69c54e",
+  "metadata_sha256_before": "ed3a820786f87c91e965e2f2af6e623bf85a2f4d803d4c7549bee94a6fee0c4a",
+  "index_sha256_after": "a910953b964a5f94d27707636e03e935e63cf3d644e3b527b56e2a5c0c889867",
+  "metadata_sha256_after": "f37b71fb4480a7afcb3ccb7a044b4f900a0b5c5f44c162fa85c3aacb2949ca85"
+}

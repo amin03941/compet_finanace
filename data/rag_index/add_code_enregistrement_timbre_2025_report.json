@@ -1,0 +1,133 @@
+{
+  "status": "PASS",
+  "operation": "append_code_enregistrement_timbre_2025",
+  "created_utc": "2026-07-26T17:47:58Z",
+  "embedding_model": "BAAI/bge-m3",
+  "normalize_embeddings": true,
+  "faiss_index_type": "IndexFlatIP",
+  "dimension": 1024,
+  "device_used": "cuda",
+  "embedding_l2_max_error": 1.1920928955078125e-07,
+  "base_zip": "rag_index_global_apia_apii_startupact_douanes_oea (1).zip",
+  "base_zip_sha256": "ea314faf4956192152f9a580eb6c40c845d1835b127c800e8129157325ada020",
+  "source_input": "code_enregistrement_timbre_2025_corpus.zip",
+  "source_zip_sha256": "7659c6b9c985ccce2320fcc7c5f6239535afe17c74ac6b950e6c02ac2d890602",
+  "source_ready_member": "content/code_enregistrement_timbre_2025_corpus/rag_index_ready.jsonl",
+  "source_ready_sha256": "84cb8a06f1162a3faf2c8eb1fa16c971b388027c648b6f10eb3e269939575601",
+  "source_manifest_sha256": "42a48acdb4ab2772b89eabda7fd88d19d994b0e15881e85bf1d1b7877018280d",
+  "source_pdf_sha256": "01634900303cfac9f4269ee3918fcace60352b5a89aa3958a379186eab68f2ed",
+  "source_qa_report_sha256": "2be1c06f27e7f932f6ca60298c9fb4e797404409c7caa7182bd5d78ccfdda440",
+  "source_qa_status": "PASS",
+  "source_qa_error_count": 0,
+  "source_qa_warning_count": 0,
+  "source_qa_self_tests": [
+    {
+      "mutation": "duplicate_id",
+      "detected": true,
+      "error_count": 3,
+      "sample_error_codes": [
+        "DUPLICATE_ID",
+        "MANIFEST_COUNT_MISMATCH",
+        "DUPLICATE_ACTIVE_CONTENT"
+      ]
+    },
+    {
+      "mutation": "corrupt_content_hash",
+      "detected": true,
+      "error_count": 2,
+      "sample_error_codes": [
+        "CONTENT_HASH_MISMATCH",
+        "CONTENT_HASH_MISMATCH"
+      ]
+    },
+    {
+      "mutation": "invent_table_value_with_recomputed_hash",
+      "detected": true,
+      "error_count": 3,
+      "sample_error_codes": [
+        "TABLE_ROW_DIFFERS_FROM_AUDIT",
+        "TABLE_VALUE_NOT_ON_SOURCE_PAGE",
+        "TABLE_VALUE_MULTISET_MISMATCH"
+      ]
+    },
+    {
+      "mutation": "remove_table_row_and_update_manifest",
+      "detected": true,
+      "error_count": 50,
+      "sample_error_codes": [
+        "TABLE_AUDIT_ROW_COUNT_MISMATCH",
+        "TABLE_ROW_DIFFERS_FROM_AUDIT",
+        "TABLE_ROW_DIFFERS_FROM_AUDIT",
+        "TABLE_ROW_DIFFERS_FROM_AUDIT",
+        "TABLE_ROW_DIFFERS_FROM_AUDIT",
+        "TABLE_ROW_DIFFERS_FROM_AUDIT",
+        "TABLE_ROW_DIFFERS_FROM_AUDIT",
+        "TABLE_ROW_DIFFERS_FROM_AUDIT"
+      ]
+    },
+    {
+      "mutation": "remove_table_context_header",
+      "detected": true,
+      "error_count": 2,
+      "sample_error_codes": [
+        "TABLE_ROW_HEADER_MISSING",
+        "TABLE_ROW_DIFFERS_FROM_AUDIT"
+      ]
+    },
+    {
+      "mutation": "shift_record_page",
+      "detected": true,
+      "error_count": 3,
+      "sample_error_codes": [
+        "PDF_PAGE_MAP_MISMATCH",
+        "PDF_PAGE_MAP_MISMATCH",
+        "TEXT_NOT_SOURCE_FAITHFUL"
+      ]
+    }
+  ],
+  "previous_records": 3142,
+  "added_records": 371,
+  "final_records": 3513,
+  "new_source_id": "code_enregistrement_timbre_2025",
+  "new_faiss_positions": {
+    "start": 3142,
+    "end": 3512
+  },
+  "new_records_per_chunk_type": {
+    "text": 215,
+    "table_row": 156
+  },
+  "records_per_source_id": {
+    "apia_guide_2017": 1082,
+    "apii_faq_tunisieindustrie": 234,
+    "startup_act_pack": 206,
+    "code_douanes_2016": 1595,
+    "decret_oea_2018_612": 25,
+    "code_enregistrement_timbre_2025": 371
+  },
+  "records_per_chunk_type": {
+    "text": 1583,
+    "table": 52,
+    "table_row": 543,
+    "list_item": 1334,
+    "asset_pointer": 1
+  },
+  "id_collisions_with_base": 0,
+  "index_sha256_before": "a910953b964a5f94d27707636e03e935e63cf3d644e3b527b56e2a5c0c889867",
+  "metadata_sha256_before": "f37b71fb4480a7afcb3ccb7a044b4f900a0b5c5f44c162fa85c3aacb2949ca85",
+  "old_vector_prefix_sha256_before": "6ebff11c8800a0c278c1d850d53697e5ea6a5ff9d23418fb17c47595cab4d7fc",
+  "old_vector_prefix_sha256_after": "6ebff11c8800a0c278c1d850d53697e5ea6a5ff9d23418fb17c47595cab4d7fc",
+  "new_vector_range_sha256": "c88743b57ff7995082bda6daa3ebcb20dac995693bd350c69b73a60ae59cc42b",
+  "index_sha256_after": "c127116b0df494df71d0533374f77e639c7d26e480d8b5b33e5881bbd79084c8",
+  "metadata_sha256_after": "aa1a47fa086a152aa9e03a60f6c824e22171e8a4c88929aa532cf6a109758a6f",
+  "old_metadata_prefix_preserved": true,
+  "old_metadata_lines_preserved": 3142,
+  "old_auxiliary_files_preserved": true,
+  "old_auxiliary_file_count": 5,
+  "canonical_package_files": [
+    "embedding_config.json",
+    "faiss_unified.index",
+    "index_manifest.json",
+    "metadata_unified.jsonl"
+  ]
+}

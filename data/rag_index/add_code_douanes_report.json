@@ -1,0 +1,46 @@
+{
+  "status": "PASS",
+  "created_utc": "2026-07-20T14:33:58Z",
+  "base_zip": "/content/rag_index_apia+faq apii+startupact.zip",
+  "base_canonical_members": [
+    "embedding_config.json",
+    "faiss_unified.index",
+    "metadata_unified.jsonl"
+  ],
+  "ignored_nested_copy": "content/rag_index_global_with_startup_act/",
+  "ignored_backups": true,
+  "douanes_zip": "/content/new_source.zip",
+  "selected_douanes_member": "content/new_source/corpus/rag_index_ready.jsonl",
+  "old_total": 1522,
+  "added_total": 1595,
+  "final_total": 3117,
+  "dimension": 1024,
+  "embedding_model": "BAAI/bge-m3",
+  "normalize_embeddings": true,
+  "faiss_index_type": "IndexFlatIP",
+  "final_source_counts": {
+    "apia_guide_2017": 1082,
+    "apii_faq_tunisieindustrie": 234,
+    "startup_act_pack": 206,
+    "code_douanes_2016": 1595
+  },
+  "final_chunk_type_counts": {
+    "text": 1343,
+    "table": 52,
+    "table_row": 387,
+    "list_item": 1334,
+    "asset_pointer": 1
+  },
+  "assets_preserved": [
+    "rag_assets_unified.jsonl",
+    "startup_act_assets.jsonl",
+    "asset_catalogs/startup_act_pack_assets.jsonl"
+  ],
+  "final_zip_is_clean": true,
+  "excluded_from_final_zip": [
+    "content/",
+    "backups/",
+    "smoke_test_results.jsonl ancien",
+    "add_startup_act_report.json ancien"
+  ]
+}

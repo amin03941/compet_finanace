@@ -5,8 +5,7 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 
-# Données générées (reproductibles, seed 42) et index RAG pré-existant (à dézipper)
-data/rag_index/
+# Données générées (reproductibles, seed 42)
 data/rasd.db
 data/rasd.db-*
 data/ground_truth.csv
