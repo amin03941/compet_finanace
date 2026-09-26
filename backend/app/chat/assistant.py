@@ -31,16 +31,26 @@ SUGGESTIONS_DEFAUT = [
     "Quel est le taux de la pénalité de retard de paiement de l'impôt ?",
 ]
 
+# Questions d'exemple par mode : Amel (contribuable, gérante de PME) et Sami (agent vérificateur)
 EXEMPLES = [
-    {"question": "Le fisc me demande la liste de mes clients, je suis obligée ? En combien de temps ?", "langue": "fr", "mode": "contribuable",
-     "persona": "Amel, gérante d'une PME"},
-    {"question": "الجباية طلبت مني قائمة الحرفاء متاعي، لازم نعطيهالهم؟ وقداش عندي من وقت؟", "langue": "tn", "mode": "contribuable",
-     "persona": "Amel, en dialecte"},
-    {"question": "Quelle est la durée maximale d'une vérification approfondie de la situation fiscale ?", "langue": "fr", "mode": "agent"},
-    {"question": "Quel est le taux de la pénalité de retard de paiement de l'impôt ?", "langue": "fr", "mode": "agent"},
-    {"question": "Les banques doivent-elles présenter les relevés de comptes lors d'une vérification fiscale ?", "langue": "fr", "mode": "agent"},
-    {"question": "Quelles sont les conditions d'octroi du statut d'opérateur économique agréé ?", "langue": "fr", "mode": "contribuable"},
-    {"question": "ما هي الحالات التي يتم فيها التوظيف الإجباري للضريبة؟", "langue": "ar", "mode": "agent"},
+    {"question": "Le fisc me demande la liste de mes clients, je suis obligée ? En combien de temps ?", "langue": "fr",
+     "mode": "contribuable", "persona": "Amel, gérante d'une PME"},
+    {"question": "الجباية طلبت مني قائمة الحرفاء متاعي، لازم نعطيهالهم؟ وقداش عندي من وقت؟", "langue": "tn",
+     "mode": "contribuable", "persona": "Amel, en dialecte"},
+    {"question": "J'ai payé mon impôt en retard, combien de pénalités je vais payer ?", "langue": "fr",
+     "mode": "contribuable", "persona": "Amel, gérante d'une PME"},
+    {"question": "Un contrôleur peut-il venir vérifier ma comptabilité sans me prévenir ?", "langue": "fr",
+     "mode": "contribuable", "persona": "Amel, gérante d'une PME"},
+    {"question": "Mon entreprise importe et exporte beaucoup : comment obtenir le statut d'opérateur économique agréé ?", "langue": "fr",
+     "mode": "contribuable", "persona": "Amel, gérante d'une PME"},
+    {"question": "Quelle est la durée maximale d'une vérification approfondie de la situation fiscale ?", "langue": "fr",
+     "mode": "agent", "persona": "Sami, vérificateur"},
+    {"question": "Les banques doivent-elles présenter les relevés de comptes lors d'une vérification fiscale ?", "langue": "fr",
+     "mode": "agent", "persona": "Sami, vérificateur"},
+    {"question": "Dans quels cas la taxation d'office est-elle établie ?", "langue": "fr", "mode": "agent", "persona": "Sami, vérificateur"},
+    {"question": "Quel est le tarif de transaction pour le non-dépôt d'une déclaration ?", "langue": "fr",
+     "mode": "agent", "persona": "Sami, vérificateur"},
+    {"question": "ما هي الحالات التي يتم فيها التوظيف الإجباري للضريبة؟", "langue": "ar", "mode": "agent", "persona": "Sami, en arabe"},
 ]
 
 SYSTEME = """Tu es l'assistant réglementaire de RASD 360, un prototype de l'administration fiscale et douanière tunisienne.

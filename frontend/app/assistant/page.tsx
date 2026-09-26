@@ -167,10 +167,17 @@ export default function Assistant() {
             {messages.length === 0 && (
               <div className="mx-auto max-w-2xl pt-6 text-center">
                 <LogoRadar className="mx-auto h-12 w-12 text-action" />
-                <p className="mt-3 text-lg font-semibold text-marine dark:text-encre">Posez une question sur vos droits et obligations</p>
-                <p className="mt-1 text-sm text-attenue">L&apos;assistant répond uniquement à partir des textes de la base et cite chaque article.</p>
+                <p className="mt-3 text-lg font-semibold text-marine dark:text-encre">
+                  {mode === "contribuable" ? "Posez une question sur vos droits et obligations" : "Préparez votre contrôle : trouvez l'article exact"}
+                </p>
+                <p className="mt-1 text-sm text-attenue">
+                  {mode === "contribuable"
+                    ? "Pour les contribuables : réponse en langage simple, avec les délais, les documents et vos droits."
+                    : "Pour les agents : réponse technique, avec l'article, l'alinéa, les conditions et les exceptions."}
+                  {" "}L&apos;assistant répond uniquement à partir des textes de la base et cite chaque article.
+                </p>
                 <div className="mt-6 grid grid-cols-2 gap-2 text-left">
-                  {!exemples ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16" />) : exemples.map((ex) => (
+                  {!exemples ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16" />) : exemples.filter((ex) => ex.mode === mode).map((ex) => (
                     <button key={ex.question} onClick={() => { setLangue(ex.langue); setMode(ex.mode); envoyer(ex.question, ex.mode, ex.langue); }}
                       className="group rounded-xl border border-ligne p-3 text-sm transition-colors hover:border-action/40 hover:bg-action/5" dir={rtl(ex.langue) ? "rtl" : "ltr"}>
                       {ex.persona && <span className="mb-1 block text-[11px] font-medium text-action" dir="ltr">{ex.persona}</span>}
@@ -251,7 +258,7 @@ export default function Assistant() {
             <div className="flex items-end gap-2 rounded-2xl border border-ligne bg-fond p-2 focus-within:ring-2 focus-within:ring-action/30">
               <textarea value={saisie} onChange={(e) => setSaisie(e.target.value)} rows={1} dir={rtl(langue) ? "rtl" : "ltr"}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(saisie); } }}
-                placeholder={langue === "fr" ? "Votre question (ex. : dans quel délai dois-je répondre à une demande de l'administration ?)" : "اكتب سؤالك هنا…"}
+                placeholder={langue !== "fr" ? "اكتب سؤالك هنا…" : mode === "agent" ? "Votre question (ex. : quelles pièces peut-on exiger lors d'une vérification approfondie ?)" : "Votre question (ex. : dans quel délai dois-je répondre à une demande de l'administration ?)"}
                 className={cn("max-h-32 min-h-[40px] flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none", rtl(langue) && "font-arabe")} />
               {enCours ? <Button type="button" variant="secondaire" taille="icone" onClick={() => arret.current?.abort()} aria-label="Arrêter"><Square /></Button>
                 : <Button type="submit" taille="icone" disabled={!saisie.trim()} aria-label="Envoyer"><SendHorizonal /></Button>}
