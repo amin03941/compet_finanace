@@ -276,7 +276,7 @@ class Generateur:
         mediane = {"negoce": 1_300_000, "industrie": 2_300_000, "services": 650_000}[s.type]
         ca0 = float(np.clip(self.rng.lognormal(math.log(mediane), 0.85), 60_000, 25_000_000))
         if e.categorie == "fraudeur":
-            ca0 = float(np.clip(ca0, 250_000, 2_000_000))
+            ca0 = float(np.clip(ca0, 250_000, 1_500_000))
         e.params["ca0"] = ca0
         e.params["croissance"] = float(self.rng.normal(0.05, 0.07))
         # statut export
@@ -1037,7 +1037,7 @@ class Generateur:
             if remb and credit > 5_000 and m in (3, 6, 9, 12) and mois_credit >= 3:
                 demande, credit = credit, 0.0
             deposee = t not in e.mois_non_deposes
-            retard = int(self.rng.integers(0, 12)) if self.rng.random() < 0.05 else 0
+            retard = int(self.rng.integers(0, 12)) if (self.rng.random() < 0.05 and not e.demo) else 0
             ny, nm = (y, m + 1) if m < 12 else (y + 1, 1)
             self.tva.append({
                 "entreprise_id": e.id, "annee": y, "mois": m,
@@ -1277,6 +1277,11 @@ class Generateur:
             "factures_electroniques": pd.DataFrame(self.factures), "encaissements_bancaires": pd.DataFrame(self.banque),
             "controles_historiques": pd.DataFrame(self.controles), "prix_reference": prix,
             "parametres": self._parametres(),
+            "secteurs_reference": pd.DataFrame([{
+                "secteur_groupe": s.cle, "libelle": ref.LIBELLES_SECTEURS[s.cle], "type": s.type,
+                "marge_mediane": s.marge_mediane, "marge_sd": s.marge_sd,
+                "habituellement_crediteur": s.habituellement_crediteur, "ventes_biens": s.type != "services",
+            } for s in ref.SECTEURS.values()]),
         }
 
     def _prix_reference(self, douane: pd.DataFrame) -> pd.DataFrame:

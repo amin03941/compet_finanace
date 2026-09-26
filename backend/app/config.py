@@ -53,6 +53,8 @@ EMBED_MODEL_OLLAMA = _env("RASD_EMBED_MODEL_OLLAMA", "bge-m3:latest")
 EMBED_BACKEND = _env("RASD_EMBED_BACKEND", "sentence_transformers")
 EMBED_DEVICE = _env("RASD_EMBED_DEVICE", "cpu")
 EMBED_COMPAT_SAMPLES = 20
+# Chargement du modèle d'embeddings au démarrage de l'API (désactivable pour les tests)
+WARMUP_EMBEDDINGS = _env("RASD_WARMUP", "1") == "1"
 EMBED_COMPAT_MIN_COSINE = 0.98
 
 # --- LLM local (section 9) ---------------------------------------------------

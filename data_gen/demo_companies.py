@@ -117,8 +117,8 @@ MEDINA = {
 CARROUSEL = {
     "membres": [
         {"cle": "carthage", "raison_sociale": "Carthage Négoce SARL", "forme": "SARL", "gouvernorat": "Tunis",
-         "delegation": "Bab Bhar", "secteur": "informatique", "nat_code": "46.51", "date_creation": date(2021, 1, 12),
-         "effectif": 3, "capital": 30_000, "ca_annuel": 1_100_000},
+         "delegation": "Bab Bhar", "secteur": "informatique", "nat_code": "46.51", "date_creation": date(2024, 7, 15),
+         "effectif": 1, "capital": 30_000, "ca_annuel": 1_100_000},
         {"cle": "atlas", "raison_sociale": "Atlas Services SUARL", "forme": "SUARL", "gouvernorat": "Ariana",
          "delegation": "La Soukra", "secteur": "informatique", "nat_code": "46.51", "date_creation": date(2024, 10, 3),
          "effectif": 1, "capital": 5_000, "ca_annuel": 150_000, "maillon_manquant": True},
@@ -127,7 +127,7 @@ CARROUSEL = {
          "effectif": 2, "capital": 20_000, "ca_annuel": 900_000},
     ],
     "annee": 2025, "mois": [3, 4, 5, 6, 7, 8],
-    "montant_mensuel": 420_000,  # HT par arête du cycle
+    "montant_mensuel": 350_000,  # HT par arête du cycle
 }
 
 DEMO_SIMPLES = [SAHEL, CAP_BON, DJERBA, NOUR, MEDINA]

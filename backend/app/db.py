@@ -197,6 +197,17 @@ parametres = Table(
     Column("a_verifier", Boolean),
 )
 
+secteurs_reference = Table(  # référentiel sectoriel simulé (monographies sectorielles fictives)
+    "secteurs_reference", metadata,
+    Column("secteur_groupe", String, primary_key=True),
+    Column("libelle", String),
+    Column("type", String),  # negoce | industrie | services
+    Column("marge_mediane", Float),
+    Column("marge_sd", Float),
+    Column("habituellement_crediteur", Boolean),
+    Column("ventes_biens", Boolean),  # False : prestations de services (pas d'exportation en douane)
+)
+
 # --- Tables applicatives -------------------------------------------------------
 scores = Table(
     "scores", metadata,

@@ -137,6 +137,16 @@ SECTEURS: dict[str, Secteur] = {s.cle: s for s in [
             b1_applicable=False, ratio_achats_services=0.10),
 ]}
 
+LIBELLES_SECTEURS = {
+    "telephonie": "Téléphonie et électronique", "electromenager": "Électroménager", "informatique": "Matériel informatique",
+    "pieces_auto": "Pièces automobiles", "pharma_para": "Parapharmacie et cosmétique", "materiaux": "Matériaux de construction",
+    "distribution_alimentaire": "Distribution alimentaire", "carburants": "Lubrifiants et carburants",
+    "textile_negoce": "Négoce textile", "agroalimentaire": "Agroalimentaire", "plasturgie": "Plasturgie",
+    "textile_export": "Confection textile (export)", "cablage_auto": "Câblage automobile (export)",
+    "mecanique": "Mécanique et usinage", "btp": "Bâtiment et travaux", "transport": "Transport de marchandises",
+    "hotellerie": "Hôtellerie", "conseil": "Conseil aux entreprises", "services_informatiques": "Services informatiques",
+}
+
 # Secteurs d'où proviennent les pièges « faible marge »
 SECTEURS_FAIBLE_MARGE = ("distribution_alimentaire", "carburants")
 
