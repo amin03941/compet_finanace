@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# Données générées (reproductibles, seed 42) et index RAG pré-existant (à dézipper)
+data/rag_index/
+data/rasd.db
+data/rasd.db-*
+data/ground_truth.csv
+data/models/*
+!data/models/.gitkeep
+data/exports/
+data/audit.log
+
+# Node / Next.js
+node_modules/
+frontend/.next/
+frontend/out/
+frontend/next-env.d.ts
+*.tsbuildinfo
+
+# Environnement
+.env
+*.log
+.DS_Store
+Thumbs.db
