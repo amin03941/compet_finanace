@@ -4,7 +4,7 @@ import useSWR from "swr";
 import { ArrowRight, Building2, Coins, Siren, Target } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { fetcher, type Stats } from "@/lib/api";
-import { useCouleurs, type Couleurs } from "@/lib/couleurs";
+import { useCouleurs } from "@/lib/couleurs";
 import { dt, dtCompact, moisCourt, nombre, pct } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EtatErreur, Skeleton } from "@/components/ui/misc";
@@ -15,11 +15,6 @@ const INFOBULLE = {
   contentStyle: { borderRadius: 12, border: "1px solid rgb(var(--ligne))", background: "rgb(var(--carte))", fontSize: 12 },
   labelStyle: { color: "rgb(var(--encre))", fontWeight: 600 },
 };
-
-function couleurTranche(t: string, C: Couleurs) {
-  const bas = parseInt(t, 10);
-  return bas >= 60 ? C.rouge : bas >= 30 ? C.orange : C.vert;
-}
 
 export default function TableauDeBord() {
   useFilAriane([{ libelle: "Tableau de bord" }]);
@@ -55,7 +50,7 @@ export default function TableauDeBord() {
               <CardDescription>Entreprises présentant au moins un signal dans le mois (défaut de dépôt, TVA déduite en trop, factures &gt; CA, sous-évaluation)</CardDescription>
             </div>
           </CardHeader>
-          <CardContent className="h-[260px] pt-2">
+          <CardContent className="h-[390px] pt-2">
             {!data ? <Skeleton className="h-full" /> : (
               <ResponsiveContainer>
                 <AreaChart data={data.evolution_mensuelle} margin={{ left: -18, right: 8, top: 8 }}>
@@ -79,26 +74,28 @@ export default function TableauDeBord() {
         </Card>
 
         <Card>
-          <CardHeader><div><CardTitle>Distribution des scores</CardTitle><CardDescription>Probabilité qu&apos;un contrôle soit utile (0–100)</CardDescription></div></CardHeader>
-          <CardContent className="h-[260px] pt-2">
-            {!data ? <Skeleton className="h-full" /> : (
-              <ResponsiveContainer>
-                <BarChart data={data.distribution_scores} margin={{ left: -18, right: 4, top: 8 }}>
-                  <CartesianGrid vertical={false} stroke={C.ligne} />
-                  <XAxis dataKey="tranche" tick={AXE} tickLine={false} axisLine={false} interval={1} />
-                  <YAxis tick={AXE} tickLine={false} axisLine={false} />
-                  <Tooltip {...INFOBULLE} formatter={(v: number) => [nombre(v), "Entreprises"]} />
-                  <Bar dataKey="entreprises" radius={[6, 6, 0, 0]}>
-                    {data.distribution_scores.map((d) => <Cell key={d.tranche} fill={couleurTranche(d.tranche, C)} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
+          <CardHeader>
+            <div><CardTitle>Top 5 à contrôler ce mois</CardTitle><CardDescription>Classés par priorité = probabilité × montant en jeu</CardDescription></div>
+            <Link href="/ciblage" className="flex items-center gap-1 text-xs font-medium text-action hover:underline">Tout voir <ArrowRight className="h-3 w-3" /></Link>
+          </CardHeader>
+          <CardContent className="space-y-2 pt-3">
+            {!data ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14" />) :
+              data.top5.map((e) => (
+                <Link key={e.id} href={`/entreprise/${e.id}`} className="flex items-center gap-3 rounded-xl border border-transparent p-2.5 transition-colors hover:border-ligne hover:bg-survol">
+                  <span className="chiffres w-5 text-center text-sm font-semibold text-gris">{e.rang}</span>
+                  <PastilleScore score={e.score} taille="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{e.raison_sociale}</p>
+                    <div className="mt-0.5 flex items-center gap-2"><PucesIndices codes={e.regles} max={4} /></div>
+                  </div>
+                  <span className="chiffres text-right text-xs font-medium text-encre">{dtCompact(e.montant_en_jeu)}</span>
+                </Link>
+              ))}
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <Card>
           <CardHeader><div><CardTitle>Montant associé à chaque indice</CardTitle><CardDescription>Alertes rouges et orange (non additif : un enjeu peut être signalé par plusieurs indices)</CardDescription></div></CardHeader>
           <CardContent className="h-[300px] pt-2">
@@ -135,27 +132,6 @@ export default function TableauDeBord() {
                 </BarChart>
               </ResponsiveContainer>
             )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <div><CardTitle>Top 5 à contrôler ce mois</CardTitle><CardDescription>Classés par priorité = probabilité × montant en jeu</CardDescription></div>
-            <Link href="/ciblage" className="flex items-center gap-1 text-xs font-medium text-action hover:underline">Tout voir <ArrowRight className="h-3 w-3" /></Link>
-          </CardHeader>
-          <CardContent className="space-y-2 pt-3">
-            {!data ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14" />) :
-              data.top5.map((e) => (
-                <Link key={e.id} href={`/entreprise/${e.id}`} className="flex items-center gap-3 rounded-xl border border-transparent p-2.5 transition-colors hover:border-ligne hover:bg-survol">
-                  <span className="chiffres w-5 text-center text-sm font-semibold text-gris">{e.rang}</span>
-                  <PastilleScore score={e.score} taille="sm" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{e.raison_sociale}</p>
-                    <div className="mt-0.5 flex items-center gap-2"><PucesIndices codes={e.regles} max={4} /></div>
-                  </div>
-                  <span className="chiffres text-right text-xs font-medium text-encre">{dtCompact(e.montant_en_jeu)}</span>
-                </Link>
-              ))}
           </CardContent>
         </Card>
       </div>
