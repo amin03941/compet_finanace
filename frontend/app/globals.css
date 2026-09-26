@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design system RASD 360 — couleurs en triplets RGB pour l'opacité Tailwind */
+:root {
+  --fond: 246 248 251;       /* #F6F8FB */
+  --carte: 255 255 255;
+  --encre: 15 23 42;         /* slate-900 */
+  --attenue: 100 116 139;    /* #64748B */
+  --ligne: 226 232 240;      /* slate-200 */
+  --marine: 11 37 69;        /* #0B2545 */
+  --action: 29 78 216;       /* #1D4ED8 */
+  --action2: 19 49 92;       /* #13315C */
+  --rouge: 220 38 38;        /* #DC2626 — réservé aux alertes */
+  --orange: 245 158 11;      /* #F59E0B */
+  --vert: 22 163 74;         /* #16A34A */
+  --gris: 148 163 184;       /* #94A3B8 */
+  --survol: 241 245 249;
+}
+
+.dark {
+  --fond: 8 15 29;
+  --carte: 15 24 42;
+  --encre: 226 232 240;
+  --attenue: 148 163 184;
+  --ligne: 30 41 59;
+  --marine: 5 14 30;
+  --action: 96 140 250;
+  --action2: 147 180 255;
+  --rouge: 248 113 113;
+  --orange: 251 191 36;
+  --vert: 74 222 128;
+  --gris: 100 116 139;
+  --survol: 22 33 56;
+}
+
+html { -webkit-font-smoothing: antialiased; }
+body { @apply bg-fond text-encre font-sans; }
+
+.chiffres { font-variant-numeric: tabular-nums; }
+[dir="rtl"] { font-family: 'IBM Plex Sans Arabic', 'Inter Variable', sans-serif; }
+
+/* barres de défilement discrètes */
+.defilement::-webkit-scrollbar { width: 8px; height: 8px; }
+.defilement::-webkit-scrollbar-thumb { background: rgb(var(--gris) / 0.4); border-radius: 8px; }
+
+/* document A4 à l'écran (dossier T3) */
+.feuille-a4 { width: 210mm; min-height: 297mm; }
+@media (max-width: 1100px) { .feuille-a4 { width: 100%; } }
+
+.editable:focus { outline: 2px solid rgb(var(--action) / 0.35); outline-offset: 2px; border-radius: 6px; }
+
+mark.surlignage { background: rgb(250 204 21 / 0.35); color: inherit; padding: 0 2px; border-radius: 3px; }

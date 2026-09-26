@@ -615,7 +615,9 @@ class C4(Regle):
         for eid, grp in liens.groupby("entreprise_id"):
             out.at[eid, "declenchee"] = True
             out.at[eid, "valeur"] = len(grp)
-            r = grp.sort_values(["redressee", "statut_lie"], ascending=[False, True]).iloc[0]
+            gravite = (2 * ((grp.statut_lie == "radiée") & grp.redressee) + (grp.statut_lie == "radiée") + grp.redressee
+                       + grp.defaillante + (grp.type_lien == "dirigeant commun") * 0.5)
+            r = grp.assign(gravite=gravite).sort_values("gravite", ascending=False).iloc[0]
             out.at[eid, "details"] = {"lie": r.raison_sociale_lie, "type_lien": r.type_lien, "statut_lie": r.statut_lie,
                                       "redressee": bool(r.redressee), "defaillante": bool(r.defaillante),
                                       "annee_radiation": int(r.date_radiation.year) if pd.notna(r.date_radiation) else None}

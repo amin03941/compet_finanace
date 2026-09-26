@@ -34,6 +34,9 @@ CORRESPONDANCES = [
 ]
 
 
+_CACHE: dict[str, object] = {}  # requêtes fixes sur un index en lecture seule : résultat mémorisé
+
+
 def articles_applicables(codes: set[str], max_articles: int = 7) -> list[dict]:
     r = get_retriever()
     rag = get_index()
@@ -41,7 +44,9 @@ def articles_applicables(codes: set[str], max_articles: int = 7) -> list[dict]:
     for requete, motif, concernes in CORRESPONDANCES:
         if concernes is not None and not (codes & concernes):
             continue
-        rech = r.rechercher(requete, top_k=3)
+        if requete not in _CACHE:
+            _CACHE[requete] = r.rechercher(requete, top_k=3)
+        rech = _CACHE[requete]
         if not rech.resultats or rech.abstention:
             continue
         res = rech.resultats[0]
