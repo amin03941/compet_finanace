@@ -190,6 +190,96 @@ def audit(limite: int = Query(100, ge=1, le=1000)) -> list[dict]:
     return services.journal(limite)
 
 
+# ============================================================================ dossier de contrôle (T3)
+class DemandeDossier(BaseModel):
+    agent: str = "agent.demo"
+    stream: bool = False
+
+
+@app.post("/api/entreprises/{eid}/dossier")
+def generer_dossier(eid: int, req: DemandeDossier | None = None):
+    from .dossier import generator
+
+    _exiger_base()
+    req = req or DemandeDossier()
+    ctx = services.contexte()
+    if eid not in ctx.ent.index:
+        raise HTTPException(404, "Entreprise inconnue")
+
+    def evenements():
+        for ev in generator.generer_flux(ctx, eid, req.agent):
+            if ev["type"] == "dossier":
+                services.audit("generation_dossier", f"dossier:{ev['dossier']['id']}", req.agent,
+                               {"entreprise_id": eid, "source": ev["dossier"]["contenu"]["generation"]["source"]})
+            yield ev
+
+    if req.stream:
+        return StreamingResponse((json.dumps(ev, ensure_ascii=False) + "\n" for ev in evenements()),
+                                 media_type="application/x-ndjson")
+    for ev in evenements():
+        if ev["type"] == "dossier":
+            return ev["dossier"]
+        if ev["type"] == "erreur":
+            raise HTTPException(422, ev["message"])
+    raise HTTPException(500, "Génération interrompue")
+
+
+@app.get("/api/dossiers")
+def lister_dossiers(entreprise_id: int | None = None) -> list[dict]:
+    from .dossier import generator
+
+    return generator.lister(entreprise_id)
+
+
+@app.get("/api/dossiers/{did}")
+def lire_dossier(did: int, x_agent: str | None = Header(None)) -> dict:
+    from .dossier import generator
+
+    d = generator.lire(did)
+    if d is None:
+        raise HTTPException(404, "Dossier introuvable")
+    services.audit("consultation_dossier", f"dossier:{did}", x_agent or "agent.demo")
+    return d
+
+
+class MajDossier(BaseModel):
+    synthese: list[str] | None = None
+    documents: list[str] | None = None
+    lettre: dict | None = None
+    agent: str | None = None
+    statut: Literal["brouillon", "valide"] | None = None
+
+
+@app.put("/api/dossiers/{did}")
+def modifier_dossier(did: int, maj: MajDossier) -> dict:
+    from .dossier import generator
+
+    agent = maj.agent or "agent.demo"
+    try:
+        d = generator.modifier(did, maj.model_dump(exclude_none=True), agent)
+    except PermissionError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    if d is None:
+        raise HTTPException(404, "Dossier introuvable")
+    services.audit("validation_dossier" if maj.statut == "valide" else "modification_dossier", f"dossier:{did}", agent)
+    return d
+
+
+@app.get("/api/dossiers/{did}/pdf")
+def pdf_dossier(did: int, x_agent: str | None = Header(None)):
+    from fastapi.responses import Response
+
+    from .dossier import export, generator
+
+    d = generator.lire(did)
+    if d is None:
+        raise HTTPException(404, "Dossier introuvable")
+    contenu = export.pdf(d)
+    services.audit("export_pdf", f"dossier:{did}", x_agent or "agent.demo")
+    nom = f"RASD360_{d['contenu']['entete'].get('reference', did)}.pdf"
+    return Response(contenu, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{nom}"'})
+
+
 # ============================================================================ assistant réglementaire (T9)
 class ChatRequete(BaseModel):
     question: str = Field(..., min_length=2, max_length=2000)
