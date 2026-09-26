@@ -1,14 +1,16 @@
 """RASD 360 — API FastAPI (routes et CORS)."""
 from __future__ import annotations
 
+import json
 import logging
 import threading
 import time
 from contextlib import asynccontextmanager
+from typing import Literal
 
 from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from . import config, db, llm, services
@@ -25,6 +27,11 @@ _taches: dict = {"reset": {"etat": "inactif"}, "reentrainement": {"etat": "inact
 def _warmup_embedder() -> None:
     try:
         embedder.initialize(get_index())
+        from .rag.retriever import get_retriever
+
+        get_retriever()  # index BM25
+        if llm.prechauffer():
+            log.info("Modèle %s chargé en mémoire GPU", config.LLM_MODEL)
     except Exception as exc:  # noqa: BLE001
         log.exception("Échec de l'initialisation des embeddings")
         embedder.state().status = "error"
@@ -181,6 +188,63 @@ def performance() -> dict:
 @app.get("/api/audit")
 def audit(limite: int = Query(100, ge=1, le=1000)) -> list[dict]:
     return services.journal(limite)
+
+
+# ============================================================================ assistant réglementaire (T9)
+class ChatRequete(BaseModel):
+    question: str = Field(..., min_length=2, max_length=2000)
+    mode: Literal["contribuable", "agent"] = "contribuable"
+    langue: Literal["fr", "ar", "tn"] = "fr"
+    historique: list[dict] = Field(default_factory=list)
+    stream: bool = True
+
+
+@app.post("/api/chat")
+def chat(req: ChatRequete):
+    from .chat import assistant
+
+    if _startup["index_error"]:
+        raise HTTPException(503, "Index RAG indisponible")
+    if not req.stream:
+        return assistant.repondre(req.question, req.mode, req.langue, req.historique)
+
+    def flux():
+        try:
+            for ev in assistant.repondre_flux(req.question, req.mode, req.langue, req.historique):
+                yield json.dumps(ev, ensure_ascii=False) + "\n"
+        except Exception as exc:  # noqa: BLE001
+            log.exception("Erreur de l'assistant")
+            yield json.dumps({"type": "erreur", "message": f"Erreur interne : {exc}"}, ensure_ascii=False) + "\n"
+
+    return StreamingResponse(flux(), media_type="application/x-ndjson")
+
+
+@app.get("/api/chat/exemples")
+def chat_exemples() -> list[dict]:
+    from .chat.assistant import EXEMPLES
+
+    return EXEMPLES
+
+
+@app.get("/api/rag/record/{rid}")
+def rag_record(rid: str) -> dict:
+    from .rag.index import strip_header
+
+    r = get_index().get(rid)
+    if r is None:
+        raise HTTPException(404, "Record introuvable dans l'index")
+    return {"id": r["id"], "source_id": r["source_id"], "document": r.get("source_title"), "section": r.get("section"),
+            "article": r.get("article_number") or r.get("article_label"), "page": r.get("pdf_page"), "page_fin": r.get("pdf_page_end"),
+            "locator": r.get("locator"), "chunk_type": r.get("chunk_type"), "texte": strip_header(r.get("content", ""))}
+
+
+@app.get("/api/rag/sources")
+def rag_sources() -> dict:
+    rag = get_index()
+    titres = rag.source_titles()
+    notes = {"code_douanes_2016": "Édition 2016", "cdpf_2024": "Mis à jour au 1er janvier 2024"}
+    return {"sources": [{"source_id": k, "titre": titres.get(k, k), "records": v, "note": notes.get(k)} for k, v in rag.sources.items()],
+            "non_couverts": ["Code de la TVA", "Code de l'IRPP et de l'IS"], "mis_a_jour": rag.manifest.get("updated_utc")}
 
 
 # ============================================================================ administration

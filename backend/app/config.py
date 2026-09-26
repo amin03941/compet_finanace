@@ -58,7 +58,7 @@ WARMUP_EMBEDDINGS = _env("RASD_WARMUP", "1") == "1"
 EMBED_COMPAT_MIN_COSINE = 0.98
 
 # --- LLM local (section 9) ---------------------------------------------------
-OLLAMA_URL = _env("RASD_OLLAMA_URL", "http://localhost:11434")
+OLLAMA_URL = _env("RASD_OLLAMA_URL", "http://127.0.0.1:11434")  # 127.0.0.1 : sous Windows, « localhost » tente IPv6 d'abord (+2 s)
 LLM_MODEL = _env("RASD_LLM_MODEL", "qwen3:8b")
 LLM_MODEL_QUALITY = _env("RASD_LLM_MODEL_QUALITY", "qwen3.5:9b")
 LLM_TEMPERATURE = float(_env("RASD_LLM_TEMPERATURE", "0.2"))

@@ -45,8 +45,11 @@ _ARTICLE_NUM_RE = re.compile(r"article\s+(premier|\d+)\s*(bis|ter|quater|quinqui
 
 def normalize_article_number(value: str | None) -> str | None:
     """'Article 16' / 'article 16 bis' / 'Article premier' -> '16', '16 bis', '1'."""
-    if not value:
+    if value is None or value == "":
         return None
+    value = str(value).strip()
+    if re.fullmatch(r"\d+(\s*(bis|ter|quater))?", value, re.I):  # ex. décret OEA : article_number = 16
+        value = f"article {value}"
     m = _ARTICLE_NUM_RE.search(value)
     if not m:
         return None

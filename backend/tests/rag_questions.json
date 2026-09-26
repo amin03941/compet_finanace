@@ -1,0 +1,25 @@
+{
+  "description": "Jeu de 20 questions pour calibrer le seuil d'abstention du retriever (section 4.5) et tester l'acceptation (section 4.6). 'attendu' : source et article devant figurer dans le top 3 ; 'dans_la_base' : false si aucun texte indexé ne répond.",
+  "questions": [
+    {"question": "Dans quel délai une entreprise doit-elle communiquer à l'administration fiscale la liste de ses clients et fournisseurs ?", "dans_la_base": true, "acceptation": true, "attendu": {"source_id": "cdpf_2024", "article": "16"}},
+    {"question": "Les banques doivent-elles présenter les relevés de comptes lors d'une vérification fiscale ?", "dans_la_base": true, "acceptation": true, "attendu": {"source_id": "cdpf_2024", "article": "17"}},
+    {"question": "Dans quels cas la taxation d'office est-elle établie ?", "dans_la_base": true, "acceptation": true, "attendu": {"source_id": "cdpf_2024", "article": "47"}},
+    {"question": "Quel est le taux de la pénalité de retard de paiement de l'impôt ?", "dans_la_base": true, "acceptation": true, "attendu": {"source_id": "cdpf_2024", "article": "81"}},
+    {"question": "Quelle est la durée maximale d'une vérification approfondie ?", "dans_la_base": true, "acceptation": true, "attendu": {"source_id": "cdpf_2024", "article": "40"}},
+    {"question": "Quelles sont les conditions d'octroi du statut d'opérateur économique agréé ?", "dans_la_base": true, "acceptation": true, "attendu": {"source_id": "decret_oea_2018_612"}},
+    {"question": "Quel est le tarif de transaction pour le non-dépôt d'une déclaration ?", "dans_la_base": true, "acceptation": true, "attendu": {"source_id": "cdpf_2024", "id_contient": "tarif_de_transaction_annexe", "section_contient": "I. Les infractions fiscales pénales en matière de déclaration"}},
+    {"question": "L'administration doit-elle envoyer un avis avant de commencer une vérification fiscale ?", "dans_la_base": true},
+    {"question": "Quel est le délai de prescription du droit de l'administration fiscale de réclamer l'impôt ?", "dans_la_base": true},
+    {"question": "Qu'est-ce que le régime de l'admission temporaire en douane ?", "dans_la_base": true},
+    {"question": "Quels services sont assimilés à l'exportation pour bénéficier des avantages fiscaux ?", "dans_la_base": true},
+    {"question": "Quels droits d'enregistrement s'appliquent à la vente d'un immeuble ?", "dans_la_base": true},
+    {"question": "Quelle amende est prévue en cas de refus de communiquer les documents comptables au vérificateur ?", "dans_la_base": true},
+    {"question": "Quelle est la capitale de l'Australie ?", "dans_la_base": false},
+    {"question": "Comment préparer un couscous au poisson ?", "dans_la_base": false},
+    {"question": "Quel est le meilleur smartphone de l'année ?", "dans_la_base": false},
+    {"question": "Qui a gagné la coupe du monde de football en 2018 ?", "dans_la_base": false},
+    {"question": "Comment soigner un rhume rapidement ?", "dans_la_base": false},
+    {"question": "Quel temps fera-t-il demain à Tunis ?", "dans_la_base": false},
+    {"question": "Comment écrire une boucle for en Python ?", "dans_la_base": false}
+  ]
+}

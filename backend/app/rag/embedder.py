@@ -37,7 +37,7 @@ class SentenceTransformerBackend(EmbeddingBackend):
         self.model = SentenceTransformer(model_name, device=device)
 
     def encode(self, texts: list[str]) -> np.ndarray:
-        vecs = self.model.encode(texts, normalize_embeddings=True, convert_to_numpy=True, batch_size=4)
+        vecs = self.model.encode(texts, normalize_embeddings=True, convert_to_numpy=True, batch_size=4, show_progress_bar=False)
         return np.asarray(vecs, dtype="float32")
 
 
@@ -150,9 +150,14 @@ def initialize(rag: RagIndex, preferred: str = config.EMBED_BACKEND) -> Embedder
     return _state
 
 
-def encode_query(text: str, timeout: float = 180) -> np.ndarray:
+def encode_queries(texts: list[str], timeout: float = 180) -> np.ndarray:
+    """Encode plusieurs requêtes en un seul lot (plus rapide sur CPU)."""
     if not _state.ready_event.wait(timeout):
         raise RuntimeError("Le modèle d'embeddings est encore en cours de chargement.")
     if _state.backend is None:
         raise RuntimeError(_state.error or "Modèle d'embeddings indisponible.")
-    return _state.backend.encode([text])
+    return _state.backend.encode(texts)
+
+
+def encode_query(text: str, timeout: float = 180) -> np.ndarray:
+    return encode_queries([text], timeout)

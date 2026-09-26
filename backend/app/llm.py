@@ -17,8 +17,19 @@ class LLMUnavailable(RuntimeError):
     """Ollama ne répond pas : l'interface affiche un message clair, le reste continue."""
 
 
-def _options() -> dict:
-    return {"temperature": config.LLM_TEMPERATURE, "num_ctx": config.LLM_NUM_CTX}
+def _options(extra: dict | None = None) -> dict:
+    return {"temperature": config.LLM_TEMPERATURE, "num_ctx": config.LLM_NUM_CTX, **(extra or {})}
+
+
+def prechauffer(model: str | None = None) -> bool:
+    """Charge le modèle en VRAM (keep_alive) pour que la première réponse de la démo soit rapide."""
+    try:
+        # mêmes options (num_ctx) que les vraies requêtes, sinon Ollama recharge le modèle
+        httpx.post(f"{config.OLLAMA_URL}/api/generate", json={"model": model or config.LLM_MODEL, "keep_alive": "30m",
+                                                              "options": _options()}, timeout=120)
+        return True
+    except httpx.HTTPError:
+        return False
 
 
 def ollama_status(timeout: float = 3.0) -> dict:
@@ -41,6 +52,7 @@ def chat(
     model: str | None = None,
     fmt: dict | str | None = None,
     timeout: float | None = None,
+    options: dict | None = None,
 ) -> str:
     """Appel non streamé ; `fmt` = schéma JSON pour les sorties structurées."""
     payload: dict = {
@@ -48,7 +60,7 @@ def chat(
         "messages": messages,
         "stream": False,
         "think": False,
-        "options": _options(),
+        "options": _options(options),
         "keep_alive": "30m",
     }
     if fmt is not None:
@@ -64,14 +76,15 @@ def chat(
     return content
 
 
-def chat_stream(messages: list[dict], model: str | None = None, timeout: float | None = None) -> Iterator[str]:
+def chat_stream(messages: list[dict], model: str | None = None, timeout: float | None = None,
+                options: dict | None = None) -> Iterator[str]:
     """Streaming token par token (NDJSON d'Ollama)."""
     payload = {
         "model": model or config.LLM_MODEL,
         "messages": messages,
         "stream": True,
         "think": False,
-        "options": _options(),
+        "options": _options(options),
         "keep_alive": "30m",
     }
     try:
