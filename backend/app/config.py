@@ -71,7 +71,7 @@ RETRIEVER_TOP_K = 8
 RETRIEVER_RRF_K = 60
 # Seuil d'abstention sur la similarité cosinus du meilleur résultat dense.
 # Calibré sur backend/tests/rag_questions.json (voir scripts/calibrate_retriever.py)
-RETRIEVER_ABSTAIN_THRESHOLD = float(_env("RASD_ABSTAIN_THRESHOLD", "0.48"))
+RETRIEVER_ABSTAIN_THRESHOLD = float(_env("RASD_ABSTAIN_THRESHOLD", "0.52"))
 
 # --- Données fictives --------------------------------------------------------
 SEED = 42

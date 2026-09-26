@@ -1381,10 +1381,7 @@ def generer(n: int = config.N_ENTREPRISES, seed: int = config.SEED, db_path: Pat
     gt = gen.verite_terrain()
 
     db_path = Path(db_path or config.DB_PATH)
-    for suffix in ("", "-wal", "-shm"):
-        p = Path(str(db_path) + suffix)
-        if p.exists():
-            p.unlink()
+    # pas de suppression du fichier : sous Windows, l'API peut le garder ouvert ; on recrée les tables en place
     engine = db.make_engine(db_path)
     db.create_schema(engine, drop=True)
     with engine.begin() as conn:

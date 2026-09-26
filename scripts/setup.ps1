@@ -1,38 +1,54 @@
-# RASD 360 — installation complète (Windows / PowerShell)
+﻿# RASD 360 — installation complète (Windows / PowerShell)
 # Prérequis : Python 3.11, Node 20+, Ollama (qwen3:8b), index RAG zippé dans Téléchargements
 $ErrorActionPreference = "Stop"
-$Root = Split-Path -Parent $PSScriptRoot
-Set-Location $Root
+$Racine = Split-Path -Parent $PSScriptRoot
+Set-Location $Racine
+$Debut = Get-Date
 
-Write-Host "==> 1/5 Index RAG" -ForegroundColor Cyan
-$IndexDir = Join-Path $Root "data\rag_index"
+Write-Host "==> 1/7 Index RAG (lecture seule)" -ForegroundColor Cyan
+$Index = Join-Path $Racine "data\rag_index"
 $Zip = Join-Path $env:USERPROFILE "Downloads\rag_index_hackathon_fiscal_douane_v2.zip"
-if (-not (Test-Path (Join-Path $IndexDir "faiss_unified.index"))) {
+if (-not (Test-Path (Join-Path $Index "faiss_unified.index"))) {
     if (-not (Test-Path $Zip)) { throw "Index introuvable : $Zip" }
-    New-Item -ItemType Directory -Force $IndexDir | Out-Null
-    Expand-Archive -Path $Zip -DestinationPath $IndexDir -Force
-    Write-Host "    Index dézippé dans $IndexDir"
+    New-Item -ItemType Directory -Force $Index | Out-Null
+    Expand-Archive -Path $Zip -DestinationPath $Index -Force
+    Write-Host "    Index dézippé dans $Index"
 } else { Write-Host "    Index déjà présent" }
 
-Write-Host "==> 2/5 Environnement Python (backend\.venv)" -ForegroundColor Cyan
-$Venv = Join-Path $Root "backend\.venv"
+Write-Host "==> 2/7 Environnement Python (backend\.venv)" -ForegroundColor Cyan
+$Venv = Join-Path $Racine "backend\.venv"
 if (-not (Test-Path "$Venv\Scripts\python.exe")) { py -3.11 -m venv $Venv }
 $Py = "$Venv\Scripts\python.exe"
 & $Py -m pip install --upgrade pip -q
-# PyTorch CPU : les embeddings des questions tournent sur CPU pour laisser la VRAM à Ollama
+# PyTorch CPU : les questions sont encodées sur CPU pour laisser les 8 Go de VRAM à Ollama
 & $Py -m pip install torch --index-url https://download.pytorch.org/whl/cpu -q
 & $Py -m pip install -r backend\requirements.txt -q
+$env:PYTHONPATH = "$Racine;$Racine\backend"
+$env:PYTHONIOENCODING = "utf-8"
 
-Write-Host "==> 3/5 Modèle d'embeddings BAAI/bge-m3 (cache Hugging Face)" -ForegroundColor Cyan
+Write-Host "==> 3/7 Modèle d'embeddings BAAI/bge-m3 (cache Hugging Face)" -ForegroundColor Cyan
 & $Py -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3', device='cpu')"
 
-Write-Host "==> 4/5 Base fictive + scores (seed 42)" -ForegroundColor Cyan
-& $Py -m data_gen.generate
-& $Py -m app.risk.scoring
+Write-Host "==> 4/7 LLM local (Ollama)" -ForegroundColor Cyan
+if (Get-Command ollama -ErrorAction SilentlyContinue) {
+    $Modeles = (ollama list) -join "`n"
+    if ($Modeles -notmatch "qwen3:8b") { ollama pull qwen3:8b }
+    Write-Host "    qwen3:8b disponible"
+} else { Write-Warning "Ollama absent : l'assistant et la rédaction LLM seront indisponibles (le reste fonctionne)." }
 
-Write-Host "==> 5/5 Frontend (npm install)" -ForegroundColor Cyan
-Push-Location (Join-Path $Root "frontend")
-npm install --no-fund --no-audit
+Write-Host "==> 5/7 Base fictive, scores et métriques (seed 42)" -ForegroundColor Cyan
+Push-Location backend
+& $Py -m data_gen.generate | Out-Null
+& $Py -m app.risk.scoring | Out-Null
+Write-Host "==> 6/7 Calibration du seuil d'abstention du retriever (20 questions)" -ForegroundColor Cyan
+& $Py -m app.rag.calibration | Out-Null
 Pop-Location
 
-Write-Host "Installation terminée. Lancer scripts\run_backend.ps1 puis scripts\run_frontend.ps1" -ForegroundColor Green
+Write-Host "==> 7/7 Frontend (npm install + build de production)" -ForegroundColor Cyan
+Push-Location frontend
+npm install --no-fund --no-audit
+npm run build
+Pop-Location
+
+$Duree = [int]((Get-Date) - $Debut).TotalSeconds
+Write-Host "Installation terminée en $Duree s. Lancer scripts\run_backend.ps1 puis scripts\run_frontend.ps1" -ForegroundColor Green
