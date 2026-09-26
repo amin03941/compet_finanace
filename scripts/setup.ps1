@@ -1,5 +1,6 @@
 ﻿# RASD 360 — installation complète (Windows / PowerShell)
-# Prérequis : Python 3.11, Node 20+, Ollama (qwen3:8b), index RAG zippé dans Téléchargements
+# Prérequis : Python 3.11, Node 20+, Ollama (qwen3:8b), index RAG fourni (dossier data\rag_index ou archive -IndexZip)
+param([string]$IndexZip = $env:RASD_INDEX_ZIP)
 $ErrorActionPreference = "Stop"
 $Racine = Split-Path -Parent $PSScriptRoot
 Set-Location $Racine
@@ -7,11 +8,12 @@ $Debut = Get-Date
 
 Write-Host "==> 1/7 Index RAG (lecture seule)" -ForegroundColor Cyan
 $Index = Join-Path $Racine "data\rag_index"
-$Zip = Join-Path $env:USERPROFILE "Downloads\rag_index_hackathon_fiscal_douane_v2.zip"
 if (-not (Test-Path (Join-Path $Index "faiss_unified.index"))) {
-    if (-not (Test-Path $Zip)) { throw "Index introuvable : $Zip" }
+    if (-not $IndexZip -or -not (Test-Path $IndexZip)) {
+        throw "Index RAG absent : copiez ses fichiers dans $Index, ou lancez setup.ps1 -IndexZip <chemin de l'archive>"
+    }
     New-Item -ItemType Directory -Force $Index | Out-Null
-    Expand-Archive -Path $Zip -DestinationPath $Index -Force
+    Expand-Archive -Path $IndexZip -DestinationPath $Index -Force
     Write-Host "    Index dézippé dans $Index"
 } else { Write-Host "    Index déjà présent" }
 

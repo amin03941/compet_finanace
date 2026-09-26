@@ -40,11 +40,11 @@ scripts\reset_demo.ps1     # remet la démo à zéro (seed 42), avec ou sans l'A
 | Python | 3.11 (lanceur `py -3.11`) |
 | Node.js | 20 ou plus |
 | Ollama | avec `qwen3:8b` (`ollama pull qwen3:8b`) ; GPU NVIDIA 8 Go conseillé |
-| Index RAG | `rag_index_hackathon_fiscal_douane_v2.zip` dans `%USERPROFILE%\Downloads` |
+| Index RAG | fourni par les organisateurs : fichiers dans `data\rag_index\`, ou archive passée à `setup.ps1 -IndexZip <chemin>` |
 
 ### Installation pas à pas (ce que fait `setup.ps1`)
 
-1. Dézippe l'index RAG dans `data\rag_index\` (**lecture seule**, jamais modifié).
+1. Si besoin, dézippe l'index RAG (`-IndexZip`) dans `data\rag_index\` (**lecture seule**, jamais modifié).
 2. Crée `backend\.venv`, installe PyTorch **CPU** puis `backend\requirements.txt`.
 3. Télécharge `BAAI/bge-m3` dans le cache Hugging Face (encodage des questions sur CPU).
 4. Vérifie Ollama et `qwen3:8b`.
