@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import text
 
-from . import db, fmt
+from . import db, fmt, nat
 from .risk.evaluation import LIBELLES_SCHEMAS
 from .risk.features import ANNEES, Contexte, charger_contexte
 from .risk.rules import REGLES, REGLES_PAR_CODE, TYPES_DOSSIER, preuve_douaniere, type_dossier
@@ -75,6 +75,7 @@ def _ligne_liste(r: pd.Series) -> dict:
         "categorie": r.categorie, "categorie_libelle": CATEGORIES[r.categorie], "probabilite": float(r.probabilite),
         "montant_en_jeu": float(r.montant_en_jeu), "priorite": float(r.priorite),
         "regles": json.loads(r.regles_declenchees), "premiere_raison": r.premiere_raison,
+        "secteur_nat_code": r.secteur_nat_code, "secteur_nat_libelle": r.secteur_libelle,
         "type_dossier": r.type_dossier, "type_libelle": TYPES_DOSSIER.get(r.type_dossier) if r.type_dossier else None,
     }
 
@@ -135,8 +136,10 @@ def statistiques() -> dict:
 # ------------------------------------------------------------------ ciblage
 def liste(categorie: str | None = None, secteur: str | None = None, gouvernorat: str | None = None, regle: str | None = None,
           q: str | None = None, montant_min: float | None = None, tri: str = "priorite", page: int = 1, taille: int = 50,
-          type_: str | None = None) -> dict:
+          type_: str | None = None, nat_: str | None = None) -> dict:
     s = scores()
+    if nat_:  # code NAT de n'importe quel niveau : section, division, groupe ou classe
+        s = s[s.secteur_nat_code.isin(nat.classes_de(nat_))]
     if categorie:
         s = s[s.categorie.isin(categorie.split(","))]
     if type_:
@@ -165,11 +168,14 @@ def liste(categorie: str | None = None, secteur: str | None = None, gouvernorat:
 
 def liste_csv(**filtres) -> str:
     res = liste(**filtres, page=1, taille=100_000)["resultats"]
-    lignes = ["rang;entreprise;matricule;secteur;gouvernorat;score;categorie;indices;montant_en_jeu_dt;premiere_raison"]
+    lignes = ["rang;entreprise;matricule;code_nat;activite_nat;secteur;gouvernorat;score;categorie;type_dossier;indices;montant_en_jeu_dt;"
+              "premiere_raison"]
     for r in res:
         raison = (r["premiere_raison"] or "").replace(";", ",").replace("\n", " ")
-        lignes.append(f"{r['rang']};{r['raison_sociale']};{r['matricule_fiscal']};{r['secteur']};{r['gouvernorat']};"
-                      f"{r['score']:.1f};{r['categorie_libelle']};{' '.join(r['regles'])};{r['montant_en_jeu']:.0f};{raison}")
+        lignes.append(f"{r['rang']};{r['raison_sociale']};{r['matricule_fiscal']};{r['secteur_nat_code']};"
+                      f"{(r['secteur_nat_libelle'] or '').replace(';', ',')};{r['secteur']};{r['gouvernorat']};"
+                      f"{r['score']:.1f};{r['categorie_libelle']};{r['type_libelle'] or ''};{' '.join(r['regles'])};"
+                      f"{r['montant_en_jeu']:.0f};{raison}")
     return "\n".join(lignes)
 
 
@@ -376,6 +382,7 @@ def referentiels() -> dict:
     secteurs = db.read_sql("SELECT secteur_groupe AS code, libelle FROM secteurs_reference ORDER BY libelle").to_dict("records")
     return {
         "secteurs": secteurs, "gouvernorats": sorted(s.gouvernorat.unique().tolist()),
+        "nat": nat.arbre(s.secteur_nat_code.value_counts().items()),
         "categories": [{"code": c, "libelle": l} for c, l in CATEGORIES.items()],
         "regles": [r.as_dict() for r in REGLES], "schemas": LIBELLES_SCHEMAS,
         "parametres": db.read_sql("SELECT * FROM parametres").to_dict("records"),

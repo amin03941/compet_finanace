@@ -75,7 +75,7 @@ export default function TableauDeBord() {
 
         <Card>
           <CardHeader>
-            <div><CardTitle>Top 5 à contrôler ce mois</CardTitle><CardDescription>Classés par priorité = probabilité × montant en jeu</CardDescription></div>
+            <div><CardTitle>Top 5 à contrôler ce mois</CardTitle><CardDescription>Contrôles recommandés d&apos;abord, puis par priorité = probabilité × montant en jeu</CardDescription></div>
             <Link href="/ciblage" className="flex items-center gap-1 text-xs font-medium text-action hover:underline">Tout voir <ArrowRight className="h-3 w-3" /></Link>
           </CardHeader>
           <CardContent className="space-y-2 pt-3">

@@ -233,4 +233,5 @@ def montants_autorises(calc: dict) -> set[str]:
         if v and not math.isnan(v):
             out.add(fmt.nombre(v).replace(" ", " "))
             out.add(fmt.nombre(round(v)).replace(" ", " "))
+            out.add(fmt.nombre(math.floor(v)).replace(" ", " "))  # centimes tronqués : même montant
     return out

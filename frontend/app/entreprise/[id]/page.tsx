@@ -74,7 +74,7 @@ export default function FicheEntreprise() {
           {s && (
             <div className="flex flex-col items-center">
               <JaugeScore score={s.score} categorie={s.categorie} />
-              <p className="-mt-1 text-[11px] text-attenue">Probabilité qu&apos;un contrôle soit utile</p>
+              <p className="-mt-1 text-[11px] text-attenue">Score de risque · couleur = décision des règles</p>
             </div>
           )}
           {s && (

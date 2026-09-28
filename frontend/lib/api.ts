@@ -75,8 +75,19 @@ export interface LigneCiblage {
   priorite: number;
   regles: string[];
   premiere_raison: string;
+  secteur_nat_code: string;
+  secteur_nat_libelle: string;
   type_dossier: TypeDossier | null;
   type_libelle: string | null;
+}
+
+/** Nœud de la nomenclature NAT 2009 (section, division, groupe, classe), restreint aux codes présents. */
+export interface NoeudNat {
+  code: string;
+  libelle: string;
+  niveau: "section" | "division" | "groupe" | "classe";
+  entreprises: number;
+  enfants?: NoeudNat[];
 }
 
 export interface Stats {

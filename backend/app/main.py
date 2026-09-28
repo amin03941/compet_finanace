@@ -125,17 +125,20 @@ def referentiels() -> dict:
 def entreprises(categorie: str | None = None, secteur: str | None = None, gouvernorat: str | None = None,
                 regle: str | None = None, q: str | None = None, montant_min: float | None = None,
                 tri: str = "priorite", page: int = Query(1, ge=1), taille: int = Query(50, ge=1, le=500),
-                type: str | None = None) -> dict:  # noqa: A002 - nom du paramètre de requête
+                type: str | None = None, nat: str | None = None) -> dict:  # noqa: A002 - noms des paramètres de requête
     _exiger_base()
-    return services.liste(categorie, secteur, gouvernorat, regle, q, montant_min, tri, page, taille, type)
+    if nat and services.nat.niveau(nat) is None:
+        raise HTTPException(422, "Code NAT invalide : section (G), division (46), groupe (46.5) ou classe (46.52)")
+    return services.liste(categorie, secteur, gouvernorat, regle, q, montant_min, tri, page, taille, type, nat)
 
 
 @app.get("/api/entreprises.csv", response_class=PlainTextResponse)
 def entreprises_csv(categorie: str | None = None, secteur: str | None = None, gouvernorat: str | None = None,
-                    regle: str | None = None, q: str | None = None, montant_min: float | None = None, tri: str = "priorite"):
+                    regle: str | None = None, q: str | None = None, montant_min: float | None = None, tri: str = "priorite",
+                    type: str | None = None, nat: str | None = None):  # noqa: A002
     _exiger_base()
     contenu = services.liste_csv(categorie=categorie, secteur=secteur, gouvernorat=gouvernorat, regle=regle, q=q,
-                                 montant_min=montant_min, tri=tri)
+                                 montant_min=montant_min, tri=tri, type_=type, nat_=nat)
     return PlainTextResponse("﻿" + contenu, media_type="text/csv; charset=utf-8",
                              headers={"Content-Disposition": 'attachment; filename="rasd360_ciblage.csv"'})
 

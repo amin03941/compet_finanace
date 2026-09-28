@@ -409,7 +409,10 @@ def rediger(entete: dict, calc_res: dict, indices: list[dict], articles: list[di
         log.warning("Rédaction de secours : %s", exc)
         red = rediger_secours(entete, calc_res, indices, articles, documents, partie)
     texte = " ".join(red.synthese) + " " + red.lettre.corps
-    douteux = _chiffres_non_autorises(texte, calc.montants_autorises(calc_res))
+    # montants autorisés : ceux des calculs, et ceux des constats des indices fournis au rédacteur (données sources)
+    constats = " ".join(i.get("phrase") or "" for i in indices)
+    autorises = calc.montants_autorises(calc_res) | set(_chiffres_non_autorises(constats, set()))
+    douteux = _chiffres_non_autorises(texte, autorises)
     hors_liste = _articles_non_autorises(texte, [a for a in articles if a.get("partie", "dgi") == partie], documents)
     if (douteux or hors_liste) and source != "modele_de_secours":  # un montant ou un article inventé : rédaction écartée
         log.warning("Rédaction du LLM écartée (montants %s, articles %s) -> modèle de secours", douteux, hors_liste)

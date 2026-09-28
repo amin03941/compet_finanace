@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import { ChevronLeft, ChevronRight, Download, Search, SlidersHorizontal, X } from "lucide-react";
-import { API_URL, fetcher, type LigneCiblage } from "@/lib/api";
+import { API_URL, fetcher, type LigneCiblage, type NoeudNat } from "@/lib/api";
 import { CATEGORIES, cn, dt, nombre } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import { useFilAriane } from "@/components/shell/shell";
 
 interface Referentiels {
   secteurs: { code: string; libelle: string }[];
+  nat: NoeudNat[];
   gouvernorats: string[];
   regles: { code: string; libelle: string; niveau: string }[];
 }
@@ -30,6 +31,48 @@ function Selecteur({ valeur, onChange, options, placeholder }: {
   );
 }
 
+const NIVEAUX_NAT = [
+  { cle: "section", placeholder: "Toutes les sections NAT" },
+  { cle: "division", placeholder: "Toutes les divisions" },
+  { cle: "groupe", placeholder: "Tous les groupes" },
+  { cle: "classe", placeholder: "Toutes les classes" },
+] as const;
+
+/** Chemin (section, division, groupe, classe) menant au code NAT choisi dans l'arbre. */
+function cheminNat(arbre: NoeudNat[], code: string): NoeudNat[] {
+  for (const n of arbre) {
+    if (n.code === code) return [n];
+    const sous = cheminNat(n.enfants ?? [], code);
+    if (sous.length) return [n, ...sous];
+  }
+  return [];
+}
+
+/** Filtre par code d'activité NAT 2009 (INS) : Section → Division → Groupe → Classe, uniquement les codes présents. */
+function FiltreNat({ arbre, valeur, onChange }: { arbre: NoeudNat[]; valeur: string; onChange: (code: string) => void }) {
+  const chemin = cheminNat(arbre, valeur);
+  const listes: NoeudNat[][] = [arbre];
+  chemin.forEach((n) => listes.push(n.enfants ?? []));
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="rounded-md bg-survol px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-attenue">NAT 2009</span>
+      {NIVEAUX_NAT.map((niv, i) => {
+        const options = listes[i];
+        if (!options || !options.length) return null;
+        return (
+          <select key={niv.cle} value={chemin[i]?.code ?? ""} title={chemin[i]?.libelle}
+            onChange={(e) => onChange(e.target.value || (i > 0 ? chemin[i - 1].code : ""))}
+            className={cn("h-9 max-w-[230px] rounded-xl border border-ligne bg-carte px-3 text-sm outline-none focus:ring-2 focus:ring-action/30",
+              !chemin[i] && "text-attenue")}>
+            <option value="">{niv.placeholder}</option>
+            {options.map((o) => <option key={o.code} value={o.code}>{o.code} — {o.libelle} ({o.entreprises})</option>)}
+          </select>
+        );
+      })}
+    </div>
+  );
+}
+
 function Ciblage() {
   useFilAriane([{ libelle: "Ciblage" }]);
   const routeur = useRouter();
@@ -40,6 +83,7 @@ function Ciblage() {
   const [regle, setRegle] = React.useState(params.get("regle") ?? "");
   const [montant, setMontant] = React.useState(params.get("montant_min") ?? "");
   const [typeDossier, setTypeDossier] = React.useState(params.get("type") ?? "");
+  const [nat, setNat] = React.useState(params.get("nat") ?? "");
   const [saisie, setSaisie] = React.useState(params.get("q") ?? "");
   const [q, setQ] = React.useState(saisie);
   const [page, setPage] = React.useState(1);
@@ -47,7 +91,7 @@ function Ciblage() {
     const t = setTimeout(() => setQ(saisie), 250);
     return () => clearTimeout(t);
   }, [saisie]);
-  React.useEffect(() => setPage(1), [categories, secteur, gouvernorat, regle, montant, q, typeDossier]);
+  React.useEffect(() => setPage(1), [categories, secteur, gouvernorat, regle, montant, q, typeDossier, nat]);
 
   const filtres = new URLSearchParams();
   if (categories.length) filtres.set("categorie", categories.join(","));
@@ -56,6 +100,7 @@ function Ciblage() {
   if (regle) filtres.set("regle", regle);
   if (montant) filtres.set("montant_min", montant);
   if (typeDossier) filtres.set("type", typeDossier);
+  if (nat) filtres.set("nat", nat);
   if (q) filtres.set("q", q);
   const cle = filtres.toString();
   React.useEffect(() => {
@@ -65,11 +110,11 @@ function Ciblage() {
   const { data: ref } = useSWR<Referentiels>("/api/referentiels", fetcher);
   const { data, error, isLoading } = useSWR<{ total: number; resultats: LigneCiblage[] }>(
     `/api/entreprises?${cle}&page=${page}&taille=50`, fetcher, { keepPreviousData: true });
-  const nbFiltres = [categories.length > 0, secteur, gouvernorat, regle, montant, q, typeDossier].filter(Boolean).length;
+  const nbFiltres = [categories.length > 0, secteur, gouvernorat, regle, montant, q, typeDossier, nat].filter(Boolean).length;
   const pages = data ? Math.max(1, Math.ceil(data.total / 50)) : 1;
 
   const reinitialiser = () => {
-    setCategories([]); setSecteur(""); setGouvernorat(""); setRegle(""); setMontant(""); setSaisie(""); setTypeDossier("");
+    setCategories([]); setSecteur(""); setGouvernorat(""); setRegle(""); setMontant(""); setSaisie(""); setTypeDossier(""); setNat("");
   };
 
   return (
@@ -101,10 +146,12 @@ function Ciblage() {
           })}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
+          <FiltreNat arbre={ref?.nat ?? []} valeur={nat} onChange={setNat} />
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <SlidersHorizontal className="h-4 w-4 text-gris" />
           <Selecteur valeur={typeDossier} onChange={setTypeDossier} placeholder="Tous les types de dossier"
             options={[{ v: "fiscal", l: "Fiscal (DGI)" }, { v: "douanier", l: "Douanier (Douane)" }, { v: "conjoint", l: "Conjoint (DGI et Douane)" }]} />
-          <Selecteur valeur={secteur} onChange={setSecteur} placeholder="Tous les secteurs" options={(ref?.secteurs || []).map((s) => ({ v: s.code, l: s.libelle }))} />
           <Selecteur valeur={gouvernorat} onChange={setGouvernorat} placeholder="Tous les gouvernorats" options={(ref?.gouvernorats || []).map((g) => ({ v: g, l: g }))} />
           <Selecteur valeur={regle} onChange={setRegle} placeholder="Tous les indices" options={(ref?.regles || []).map((r) => ({ v: r.code, l: `${r.code} — ${r.libelle}` }))} />
           <Selecteur valeur={montant} onChange={setMontant} placeholder="Tout montant en jeu"
@@ -121,14 +168,14 @@ function Ciblage() {
               <thead>
                 <tr className="border-b border-ligne bg-survol/60 text-left text-[11px] font-semibold uppercase tracking-wide text-attenue">
                   <th className="w-14 px-4 py-3 text-center">Rang</th>
-                  <th className="px-3 py-3">Entreprise</th>
-                  <th className="px-3 py-3">Secteur · gouvernorat</th>
+                  <th className="min-w-[180px] px-3 py-3">Entreprise</th>
+                  <th className="w-[200px] px-3 py-3">Activité NAT · gouvernorat</th>
                   <th className="px-3 py-3 text-center">Score</th>
                   <th className="px-3 py-3">Catégorie</th>
                   <th className="px-3 py-3">Dossier</th>
-                  <th className="px-3 py-3">Indices</th>
-                  <th className="px-3 py-3 text-right">Montant en jeu</th>
-                  <th className="w-[26%] px-4 py-3">Première raison</th>
+                  <th className="min-w-[150px] px-3 py-3">Indices</th>
+                  <th className="whitespace-nowrap px-3 py-3 text-right">Montant en jeu</th>
+                  <th className="w-[20%] px-4 py-3">Première raison</th>
                 </tr>
               </thead>
               <tbody>
@@ -144,11 +191,15 @@ function Ciblage() {
                       <Link href={`/entreprise/${e.id}`} className="font-medium text-encre group-hover:text-action" onClick={(ev) => ev.stopPropagation()}>{e.raison_sociale}</Link>
                       <p className="chiffres text-[11px] text-attenue">{e.matricule_fiscal} <span className="rounded bg-survol px-1 text-[10px]">fictif</span></p>
                     </td>
-                    <td className="px-3 py-3 text-xs text-attenue"><p className="text-encre">{e.secteur}</p>{e.gouvernorat}</td>
+                    <td className="max-w-[200px] px-3 py-3 text-xs text-attenue">
+                      <p className="truncate text-encre" title={`${e.secteur_nat_code} — ${e.secteur_nat_libelle}`}>
+                        <span className="chiffres mr-1 rounded bg-survol px-1 text-[10px] font-semibold">{e.secteur_nat_code}</span>{e.secteur_nat_libelle}
+                      </p>{e.gouvernorat}
+                    </td>
                     <td className="px-3 py-3 text-center"><PastilleScore score={e.score} categorie={e.categorie} taille="sm" /></td>
                     <td className="px-3 py-3"><BadgeCategorie categorie={e.categorie} court /></td>
                     <td className="px-3 py-3">{e.type_dossier ? <BadgeTypeDossier type={e.type_dossier} /> : <span className="text-xs text-gris">—</span>}</td>
-                    <td className="px-3 py-3"><PucesIndices codes={e.regles} max={4} /></td>
+                    <td className="min-w-[150px] px-3 py-3"><PucesIndices codes={e.regles} max={4} /></td>
                     <td className="chiffres px-3 py-3 text-right font-medium">{e.montant_en_jeu > 0 ? dt(e.montant_en_jeu) : <span className="text-gris">—</span>}</td>
                     <td className="px-4 py-3">
                       <Infobulle contenu={e.premiere_raison}>

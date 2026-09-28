@@ -229,3 +229,30 @@ def test_type_de_dossier_dans_la_liste_et_la_fiche():
     alertes = s[s.categorie.isin(["rouge", "orange"])]
     assert sum(x["rouges"] + x["oranges"] for x in par_admin.values()) == len(alertes)
     assert json.dumps(par_admin)  # sérialisable pour l'API
+
+
+def test_montant_tronque_admis_montant_invente_refuse():
+    from app.dossier.calc import montants_autorises
+    from app.dossier.generator import _chiffres_non_autorises
+
+    autorises = montants_autorises({"lignes": [{"montant": 115547.61}], "total_estime": 115547.61})
+    assert _chiffres_non_autorises("Droits et taxes en jeu : 115 547 DT.", autorises) == []
+    assert _chiffres_non_autorises("Droits et taxes en jeu : 115 548 DT.", autorises) == []
+    assert _chiffres_non_autorises("soit 582 463 DT", autorises) == ["582 463"]
+
+
+def test_montant_d_un_constat_admis_dans_la_lettre(monkeypatch):
+    from app.dossier import generator
+    from app.dossier.generator import Lettre, Redaction
+
+    indices = [{"code": "C5", "niveau": "C", "phrase": "1 salarié déclaré pour 500 000 DT d'importations en 2025.",
+                "parties": ["douane"]}]
+    calc_res = {"lignes": [{"montant": 115547.61, "partie": "douane", "libelle": "Total", "montant_affiche": "115 548 DT"}],
+                "total_estime": 115547.61, "total_douane": 115547.61, "total_dgi": 0.0}
+    corps = "Madame, Monsieur, nous relevons 500 000 DT d'importations pour 115 548 DT de droits en jeu. " + "Merci de justifier. " * 10
+    monkeypatch.setattr(generator, "rediger_llm", lambda prompt, partie="dgi": (
+        Redaction(synthese=["a", "b", "c"], lettre=Lettre(objet="Demande de justification", corps=corps)), "llm:test"))
+    entete = {"raison_sociale": "X", "matricule_fiscal": "1", "adresse": "a", "secteur": "s", "periode": "2025",
+              "categorie_libelle": "Demande", "gouvernorat": "g", "categorie": "orange"}
+    _, source, erreur = generator.rediger(entete, calc_res, indices, [], [], True, partie="douane")
+    assert source == "llm:test" and erreur is None
