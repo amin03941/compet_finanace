@@ -124,9 +124,10 @@ def referentiels() -> dict:
 @app.get("/api/entreprises")
 def entreprises(categorie: str | None = None, secteur: str | None = None, gouvernorat: str | None = None,
                 regle: str | None = None, q: str | None = None, montant_min: float | None = None,
-                tri: str = "priorite", page: int = Query(1, ge=1), taille: int = Query(50, ge=1, le=500)) -> dict:
+                tri: str = "priorite", page: int = Query(1, ge=1), taille: int = Query(50, ge=1, le=500),
+                type: str | None = None) -> dict:  # noqa: A002 - nom du paramètre de requête
     _exiger_base()
-    return services.liste(categorie, secteur, gouvernorat, regle, q, montant_min, tri, page, taille)
+    return services.liste(categorie, secteur, gouvernorat, regle, q, montant_min, tri, page, taille, type)
 
 
 @app.get("/api/entreprises.csv", response_class=PlainTextResponse)
@@ -244,8 +245,8 @@ def lire_dossier(did: int, x_agent: str | None = Header(None)) -> dict:
 
 class MajDossier(BaseModel):
     synthese: list[str] | None = None
-    documents: list[str] | None = None
-    lettre: dict | None = None
+    documents: dict[str, list[str]] | None = None  # par administration : {"dgi": [...], "douane": [...]}
+    lettres: dict[str, dict] | None = None  # par administration : {"dgi": {"objet", "corps"}, ...}
     agent: str | None = None
     statut: Literal["brouillon", "valide"] | None = None
 
@@ -278,6 +279,84 @@ def pdf_dossier(did: int, x_agent: str | None = Header(None)):
     services.audit("export_pdf", f"dossier:{did}", x_agent or "agent.demo")
     nom = f"RASD360_{d['contenu']['entete'].get('reference', did)}.pdf"
     return Response(contenu, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{nom}"'})
+
+
+class ActionArticle(BaseModel):
+    record_id: str = Field(..., min_length=1)
+    motif: str = ""  # contrôlé côté métier (10 caractères au moins), pour un message d'erreur explicite
+    agent: str = "agent.demo"
+    partie: Literal["dgi", "douane"] | None = None  # ajout : administration concernée (dossier conjoint)
+
+
+class DemandeLettre(BaseModel):
+    agent: str = "agent.demo"
+
+
+def _editer(did: int, fn, *args) -> dict:
+    from .dossier.edition import ErreurEdition
+
+    try:
+        return fn(did, *args)
+    except ErreurEdition as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@app.get("/api/dossiers/{did}/articles/recherche")
+def rechercher_article(did: int, q: str = Query(..., min_length=2, max_length=200)) -> list[dict]:
+    from .dossier import edition
+
+    return _editer(did, edition.rechercher, q)
+
+
+@app.post("/api/dossiers/{did}/articles")
+def ajouter_article(did: int, req: ActionArticle) -> dict:
+    from .dossier import edition
+
+    d = _editer(did, edition.ajouter, req.record_id, req.motif, req.agent, req.partie)
+    services.audit("ajout_article", f"dossier:{did}", req.agent, {"record_id": req.record_id, "motif": req.motif})
+    return d
+
+
+@app.post("/api/dossiers/{did}/articles/retrait")
+def retirer_article(did: int, req: ActionArticle) -> dict:
+    from .dossier import edition
+
+    d = _editer(did, edition.retirer, req.record_id, req.motif, req.agent)
+    services.audit("retrait_article", f"dossier:{did}", req.agent, {"record_id": req.record_id, "motif": req.motif})
+    return d
+
+
+@app.post("/api/dossiers/{did}/articles/retablissement")
+def retablir_article(did: int, req: ActionArticle) -> dict:
+    from .dossier import edition
+
+    d = _editer(did, edition.retablir, req.record_id, req.motif, req.agent)
+    services.audit("retablissement_article", f"dossier:{did}", req.agent, {"record_id": req.record_id, "motif": req.motif})
+    return d
+
+
+@app.post("/api/dossiers/{did}/lettre/regeneration")
+def regenerer_lettre(did: int, req: DemandeLettre | None = None) -> dict:
+    from .dossier import edition
+
+    req = req or DemandeLettre()
+    d = _editer(did, edition.regenerer_lettre, req.agent)
+    services.audit("regeneration_lettre", f"dossier:{did}", req.agent)
+    return d
+
+
+@app.get("/api/dossiers/{did}/historique")
+def historique_dossier(did: int) -> list[dict]:
+    from .dossier import generator, journal
+
+    d = generator.lire(did)
+    if d is None:
+        raise HTTPException(404, "Dossier introuvable")
+    return journal.historique(did, depuis=d["cree_le"])
 
 
 # ============================================================================ assistant réglementaire (T9)

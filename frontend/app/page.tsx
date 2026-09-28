@@ -8,7 +8,7 @@ import { useCouleurs } from "@/lib/couleurs";
 import { dt, dtCompact, moisCourt, nombre, pct } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EtatErreur, Skeleton } from "@/components/ui/misc";
-import { BadgeCategorie, CarteKpi, EnTetePage, PastilleScore, PucesIndices } from "@/components/risque/elements";
+import { BadgeCategorie, BadgeTypeDossier, CarteKpi, EnTetePage, PastilleScore, PucesIndices } from "@/components/risque/elements";
 import { useFilAriane } from "@/components/shell/shell";
 
 const INFOBULLE = {
@@ -83,7 +83,7 @@ export default function TableauDeBord() {
               data.top5.map((e) => (
                 <Link key={e.id} href={`/entreprise/${e.id}`} className="flex items-center gap-3 rounded-xl border border-transparent p-2.5 transition-colors hover:border-ligne hover:bg-survol">
                   <span className="chiffres w-5 text-center text-sm font-semibold text-gris">{e.rang}</span>
-                  <PastilleScore score={e.score} taille="sm" />
+                  <PastilleScore score={e.score} categorie={e.categorie} taille="sm" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{e.raison_sociale}</p>
                     <div className="mt-0.5 flex items-center gap-2"><PucesIndices codes={e.regles} max={4} /></div>
@@ -94,6 +94,21 @@ export default function TableauDeBord() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader><div><CardTitle>Alertes par administration compétente</CardTitle>
+          <CardDescription>Type de pré-dossier déduit des indices : fiscal (DGI), douanier (Douane) ou conjoint (les deux, avec fiche de transmission)</CardDescription></div></CardHeader>
+        <CardContent className="grid grid-cols-3 gap-3 pt-2">
+          {!data ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24" />) :
+            data.alertes_par_administration.map((a) => (
+              <Link key={a.type} href={`/ciblage?type=${a.type}`} className="rounded-xl border border-ligne p-4 transition-colors hover:border-action/40 hover:bg-survol">
+                <div className="flex items-center justify-between"><BadgeTypeDossier type={a.type} /><ArrowRight className="h-3.5 w-3.5 text-gris" /></div>
+                <p className="chiffres mt-2 text-2xl font-semibold text-marine dark:text-encre">{nombre(a.rouges + a.oranges)}</p>
+                <p className="chiffres text-xs text-attenue"><span className="text-rouge">{nombre(a.rouges)} rouges</span> · <span className="text-amber-600">{nombre(a.oranges)} orange</span> · {dtCompact(a.montant)}</p>
+              </Link>
+            ))}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-2 gap-4">
         <Card>

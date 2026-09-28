@@ -64,7 +64,7 @@ def test_articles_16_17_81_retrouves_avec_extrait(ctx):
     from app.dossier.articles import articles_applicables
     from app.rag.index import get_index
 
-    arts = articles_applicables({"A1", "A3", "B1", "B4", "C3", "C4"})
+    arts = articles_applicables({"A1", "A3", "B1", "B4", "C3", "C4"}, "rouge", ["dgi"], penalites=True)
     ids = {a["id"] for a in arts}
     assert {ART.format(16), ART.format(17), ART.format(81)} <= ids
     for a in arts:
@@ -89,10 +89,10 @@ def test_dossier_sans_llm_et_pdf(ctx, sahel):
     c = d["contenu"]
     assert c["generation"]["source"] == "modele_de_secours"
     assert c["ecarts"]["total_tva"] == pytest.approx(526_400)
-    assert "526 400 DT" in c["lettre"]["corps"] or "526 400" in c["lettre"]["corps"].replace(" ", " ")
+    assert "526 400 DT" in c["lettres"]["dgi"]["corps"] or "526 400" in c["lettres"]["dgi"]["corps"].replace(" ", " ")
     assert {ART.format(16), ART.format(17), ART.format(81)} <= {a["id"] for a in c["articles"]}
     assert c["entete"]["statut"] == "brouillon" and len(c["synthese"]) == 5
-    assert any("article 16" in doc.lower() for doc in c["documents"])
+    assert any("article 16" in doc.lower() for doc in c["documents"]["dgi"])
     assert pdf(d).startswith(b"%PDF")
 
 
@@ -104,7 +104,7 @@ def test_dossier_redige_par_le_llm(ctx, sahel):
     eid, _ = sahel
     d = generer(ctx, eid, "pytest")
     c = d["contenu"]
-    texte = (" ".join(c["synthese"]) + c["lettre"]["corps"]).replace(" ", " ").replace(" ", " ")
+    texte = (" ".join(c["synthese"]) + c["lettres"]["dgi"]["corps"]).replace(" ", " ").replace(" ", " ")
     if c["generation"]["source"].startswith("llm"):
         assert "526 400" in texte
     assert c["generation"]["duree_s"] < 45

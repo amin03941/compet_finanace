@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
-import { CATEGORIES, cn, couleurScore } from "@/lib/utils";
+import { CATEGORIES, TYPES_DOSSIER, cn } from "@/lib/utils";
 import { Infobulle } from "@/components/ui/misc";
 import type { Categorie } from "@/lib/api";
 
@@ -28,8 +28,9 @@ export const FORCES: Record<string, { libelle: string; classe: string }> = {
   C: { libelle: "Niveau C — signal de contexte (ne suffit jamais seul)", classe: "bg-slate-500/10 text-slate-600 border-slate-400/30 dark:text-slate-300" },
 };
 
-export function PastilleScore({ score, taille = "md" }: { score: number; taille?: "sm" | "md" | "lg" }) {
-  const c = couleurScore(score);
+/** Score (chiffre) coloré selon la CATÉGORIE décidée par les règles : la couleur, c'est la décision ; le chiffre, l'ordre. */
+export function PastilleScore({ score, categorie, taille = "md" }: { score: number; categorie: Categorie; taille?: "sm" | "md" | "lg" }) {
+  const c = CATEGORIES[categorie].couleur;
   return (
     <span
       className={cn("chiffres inline-flex items-center justify-center rounded-full font-semibold",
@@ -52,6 +53,16 @@ export function BadgeCategorie({ categorie, court = false, className }: { catego
   );
 }
 
+export function BadgeTypeDossier({ type, className }: { type: string | null | undefined; className?: string }) {
+  if (!type || !TYPES_DOSSIER[type]) return null;
+  const t = TYPES_DOSSIER[type];
+  return (
+    <Infobulle contenu={t.detail}>
+      <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium", t.classe, className)}>{t.libelle}</span>
+    </Infobulle>
+  );
+}
+
 export function PuceIndice({ code }: { code: string }) {
   const niveau = code[0];
   return (
@@ -71,8 +82,8 @@ export function PucesIndices({ codes, max = 6 }: { codes: string[]; max?: number
   );
 }
 
-/** Jauge semi-circulaire animée (0-100). */
-export function JaugeScore({ score, taille = 180 }: { score: number; taille?: number }) {
+/** Jauge semi-circulaire animée (0-100), à la couleur de la CATÉGORIE décidée par les règles (gris compris). */
+export function JaugeScore({ score, categorie, taille = 180 }: { score: number; categorie: Categorie; taille?: number }) {
   const r = taille / 2 - 14;
   const long = Math.PI * r;
   const mv = useMotionValue(0);
@@ -82,7 +93,7 @@ export function JaugeScore({ score, taille = 180 }: { score: number; taille?: nu
     const ctrl = animate(mv, score, { duration: 0.9, ease: [0.22, 1, 0.36, 1], onUpdate: (v) => setAffiche(v) });
     return () => ctrl.stop();
   }, [score, mv]);
-  const c = couleurScore(score);
+  const c = CATEGORIES[categorie].couleur;
   const cx = taille / 2;
   const cy = taille / 2;
   return (

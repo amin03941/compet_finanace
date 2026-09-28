@@ -18,7 +18,7 @@ export async function api<T>(chemin: string, init?: RequestInit): Promise<T> {
     let msg = `Erreur ${r.status}`;
     try {
       const j = await r.json();
-      msg = j.detail || msg;
+      msg = Array.isArray(j.detail) ? j.detail.map((d: { msg: string }) => d.msg).join(" ; ") : j.detail || msg;
     } catch {}
     throw new ErreurApi(r.status, msg);
   }
@@ -56,6 +56,8 @@ export async function* fluxNdjson<T>(chemin: string, corps: unknown, signal?: Ab
 
 // ------------------------------------------------------------------ types
 export type Categorie = "rouge" | "orange" | "gris" | "vert";
+export type TypeDossier = "fiscal" | "douanier" | "conjoint";
+export type Partie = "dgi" | "douane";
 
 export interface LigneCiblage {
   id: number;
@@ -73,6 +75,8 @@ export interface LigneCiblage {
   priorite: number;
   regles: string[];
   premiere_raison: string;
+  type_dossier: TypeDossier | null;
+  type_libelle: string | null;
 }
 
 export interface Stats {
@@ -89,6 +93,7 @@ export interface Stats {
   distribution_scores: { tranche: string; entreprises: number }[];
   montant_par_indice: { code: string; libelle: string; niveau: string; entreprises: number; montant: number }[];
   alertes_par_gouvernorat: { gouvernorat: string; rouges: number; oranges: number; entreprises: number }[];
+  alertes_par_administration: { type: TypeDossier; libelle: string; rouges: number; oranges: number; montant: number }[];
   evolution_mensuelle: { periode: string; entreprises: number; dont_rouges: number }[];
   top5: LigneCiblage[];
   calcule_le: string | null;
@@ -169,6 +174,9 @@ export interface Fiche {
     priorite: number;
     rang: number;
     total: number;
+    type_dossier: TypeDossier | null;
+    type_libelle: string | null;
+    preuve_douaniere: boolean;
   } | null;
   indices: Indice[];
   neutralisations: Neutralisation[];
@@ -215,6 +223,7 @@ export interface LigneEcart {
   a_verifier?: boolean;
   indicatif?: boolean;
   total?: boolean;
+  partie?: Partie;
 }
 
 export interface ArticleDossier {
@@ -229,6 +238,70 @@ export interface ArticleDossier {
   extrait: string;
   edition: string | null;
   indices: string[];
+  origine?: "systeme" | "agent";
+  suggestion?: boolean;
+  partie?: Partie;
+  ajout?: TraceAgent;
+  retrait?: TraceAgent;
+  retablissement?: TraceAgent;
+}
+
+export interface TraceAgent {
+  agent: string;
+  motif: string;
+  le: string;
+}
+
+export interface ArticleCandidat {
+  id: string;
+  article: string;
+  document: string;
+  source_id: string;
+  edition: string | null;
+  locator: string;
+  extrait: string;
+  pertinence: number | null;
+  par_numero: boolean;
+  deja_present: boolean;
+  ecarte: boolean;
+}
+
+export interface EntreeHistorique {
+  id: number;
+  dossier_id: number;
+  record_id: string | null;
+  article: string | null;
+  action: string;
+  libelle: string;
+  motif: string | null;
+  agent: string;
+  horodatage: string;
+}
+
+export interface LettreDossier {
+  objet: string;
+  corps: string;
+  delai_jours: number;
+  destinataire: string;
+  emetteur?: string;
+  partie?: Partie;
+  articles_ids?: string[];
+  source?: string;
+  erreur?: string | null;
+  regeneree_le?: string;
+}
+
+export interface FicheTransmission {
+  sens: "douane_vers_dgi" | "dgi_vers_douane";
+  emetteur: string;
+  destinataire: string;
+  entreprise: { raison_sociale: string; matricule_fiscal: string };
+  indices: { code: string; libelle: string }[];
+  pieces: string[];
+  date: string;
+  agent: string;
+  base_legale: { article: string; document: string; record_id: string; extrait: string };
+  mention: string;
 }
 
 export interface Dossier {
@@ -255,14 +328,31 @@ export interface Dossier {
       date: string;
       reference?: string;
       entreprise_id: number;
+      type_dossier: TypeDossier;
+      type_libelle: string;
+      titre: string;
+      parties: Partie[];
+      preuve_douaniere: boolean;
+      destinataires: { partie: Partie; administration: string; nom: string; service: string }[];
     };
     synthese: string[];
-    ecarts: { annee: number; lignes: LigneEcart[]; total_tva: number; total_estime: number; hypotheses: string[]; mention: string };
-    indices: { code: string; niveau: string; libelle: string; phrase: string; montant_en_jeu: number }[];
+    ecarts: { annee: number; lignes: LigneEcart[]; total_tva: number; total_dgi?: number; total_douane?: number; total_estime: number;
+              hypotheses: string[]; hypotheses_par_partie?: Partial<Record<Partie, string[]>>; mention: string };
+    indices: { code: string; niveau: string; libelle: string; phrase: string; montant_en_jeu: number; administration?: string;
+               parties?: Partie[] }[];
     articles: ArticleDossier[];
-    documents: string[];
-    lettre: { objet: string; corps: string; delai_jours: number; destinataire: string };
+    articles_ecartes: ArticleDossier[];
+    articles_modifies: boolean;
+    notes_articles: Partial<Record<Partie, string>>;
+    documents: Partial<Record<Partie, string[]>>;
+    lettres: Partial<Record<Partie, LettreDossier>>;
+    transmissions: FicheTransmission[];
     avertissements: string[];
     generation: { source: string; erreur: string | null; duree_s: number; modele: string | null };
+  };
+  etat_articles: {
+    lettre_a_regenerer: boolean;
+    articles_hors_liste_lettre: string[];
+    par_partie: Partial<Record<Partie, { lettre_a_regenerer: boolean; articles_hors_liste: string[] }>>;
   };
 }

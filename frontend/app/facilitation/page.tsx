@@ -58,7 +58,7 @@ export default function Facilitation() {
                     <Link href={`/entreprise/${e.id}`} className="font-medium hover:text-action">{e.raison_sociale}</Link>
                     <p className="text-[11px] text-attenue">{e.secteur} · {e.gouvernorat} · {e.statut_export}</p>
                   </td>
-                  <td className="px-3 py-3 text-center"><PastilleScore score={e.score} taille="sm" /></td>
+                  <td className="px-3 py-3 text-center"><PastilleScore score={e.score} categorie={e.categorie} taille="sm" /></td>
                   <td className="px-3 py-3">
                     <div className="flex flex-wrap gap-1">
                       {e.criteres.map((c) => (

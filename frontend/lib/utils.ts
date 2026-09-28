@@ -56,8 +56,9 @@ export const CATEGORIES: Record<string, { libelle: string; court: string; couleu
   vert: { libelle: "Cohérent", court: "Cohérent", couleur: "rgb(var(--vert))", fond: "bg-vert/10", texte: "text-vert", point: "bg-vert" },
 };
 
-export function couleurScore(score: number): string {
-  if (score >= 60) return "rgb(var(--rouge))";
-  if (score >= 35) return "rgb(var(--orange))";
-  return "rgb(var(--vert))";
-}
+/** Type de dossier selon l'administration compétente (déduit des indices déclenchés). */
+export const TYPES_DOSSIER: Record<string, { libelle: string; detail: string; classe: string }> = {
+  fiscal: { libelle: "Fiscal", detail: "Dossier de la DGI (impôts)", classe: "border-action/30 bg-action/10 text-action" },
+  douanier: { libelle: "Douanier", detail: "Dossier de la Douane (contrôle a posteriori)", classe: "border-teal-500/30 bg-teal-500/10 text-teal-700 dark:text-teal-300" },
+  conjoint: { libelle: "Conjoint", detail: "Deux parties : DGI et Douane, avec fiche de transmission", classe: "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300" },
+};

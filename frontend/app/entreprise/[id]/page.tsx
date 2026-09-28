@@ -10,7 +10,7 @@ import { CATEGORIES, cn, dateFr, dt, nombre, pct } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, EtatErreur, Infobulle, Skeleton } from "@/components/ui/misc";
-import { BadgeCategorie, JaugeScore } from "@/components/risque/elements";
+import { BadgeCategorie, BadgeTypeDossier, JaugeScore } from "@/components/risque/elements";
 import { useFilAriane } from "@/components/shell/shell";
 import { GraphiqueSources } from "@/components/fiche/graphique-sources";
 import { CartesIndices, Neutralisations } from "@/components/fiche/indices";
@@ -73,14 +73,18 @@ export default function FicheEntreprise() {
           </div>
           {s && (
             <div className="flex flex-col items-center">
-              <JaugeScore score={s.score} />
+              <JaugeScore score={s.score} categorie={s.categorie} />
               <p className="-mt-1 text-[11px] text-attenue">Probabilité qu&apos;un contrôle soit utile</p>
             </div>
           )}
           {s && (
             <div className="w-[300px] space-y-3">
               <div>
-                <BadgeCategorie categorie={s.categorie} className="text-sm" />
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <BadgeCategorie categorie={s.categorie} className="text-sm" />
+                  <BadgeTypeDossier type={s.type_dossier} />
+                  {s.preuve_douaniere && <span className="text-[11px] text-attenue">preuve douanière</span>}
+                </div>
                 <p className="mt-1.5 text-xs text-attenue">{s.raison_categorie}</p>
               </div>
               <div className="grid grid-cols-2 gap-2">

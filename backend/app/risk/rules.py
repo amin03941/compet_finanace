@@ -27,6 +27,48 @@ FAMILLES = {"A1": "ventes_omises", "A2": "ventes_omises", "B1": "ventes_omises",
             "B2": "douane", "C2": "avantages"}
 
 
+# Administration compétente pour chaque règle : qui redresse, et d'où vient la preuve.
+# « dgi_preuve_douane » : redressement par la DGI, preuve tirée des données douanières (fiche de transmission Douane -> DGI).
+# « neutre » : signal de contexte, il ne décide pas du destinataire du dossier.
+ADMINISTRATION = {"A1": "dgi", "A2": "dgi", "A5": "dgi", "B3": "dgi", "B4": "dgi", "C3": "dgi",
+                  "A3": "dgi_preuve_douane", "A4": "dgi_preuve_douane", "B1": "dgi_preuve_douane",
+                  "B2": "douane", "C1": "douane", "C2": "deux", "C4": "neutre", "C5": "neutre"}
+TYPES_DOSSIER = {"fiscal": "Fiscal", "douanier": "Douanier", "conjoint": "Conjoint"}
+PARTIES_DOSSIER = {"fiscal": ["dgi"], "douanier": ["douane"], "conjoint": ["dgi", "douane"]}
+
+
+def type_dossier(codes) -> str | None:
+    """Type du pré-dossier déduit des indices déclenchés NON neutres. Sans indice : None.
+    Signaux de contexte seuls (C4, C5) : dossier fiscal (la DGI reste l'administration de droit commun)."""
+    codes = list(codes)
+    if not codes:
+        return None
+    admins = {ADMINISTRATION[c] for c in codes if ADMINISTRATION.get(c, "neutre") != "neutre"}
+    if "deux" in admins:
+        return "conjoint"
+    douane, dgi = "douane" in admins, bool(admins & {"dgi", "dgi_preuve_douane"})
+    if douane and dgi:
+        return "conjoint"
+    return "douanier" if douane else "fiscal"
+
+
+def preuve_douaniere(codes) -> bool:
+    return any(ADMINISTRATION.get(c) == "dgi_preuve_douane" for c in codes)
+
+
+def parties_indice(code: str, type_: str) -> list[str]:
+    """Partie(s) du dossier où figure un indice : DGI, Douane, ou les deux (C2 et signaux de contexte)."""
+    parties = PARTIES_DOSSIER.get(type_, ["dgi"])
+    adm = ADMINISTRATION.get(code, "neutre")
+    if adm in ("dgi", "dgi_preuve_douane"):
+        voulu = ["dgi"]
+    elif adm == "douane":
+        voulu = ["douane"]
+    else:  # « deux » ou « neutre »
+        voulu = ["dgi", "douane"]
+    return [p for p in voulu if p in parties] or parties[:1]
+
+
 def _vide(ids) -> pd.DataFrame:
     df = pd.DataFrame(index=pd.Index(ids, name="entreprise_id"))
     df["valeur"] = np.nan
@@ -86,9 +128,13 @@ class Regle:
     def preuves(self, ctx: Contexte, eid: int) -> dict:  # pragma: no cover - interface
         raise NotImplementedError
 
+    @property
+    def administration(self) -> str:
+        return ADMINISTRATION[self.code]
+
     def as_dict(self) -> dict:
         return {"code": self.code, "niveau": self.niveau, "libelle": self.libelle, "formule": self.formule,
-                "condition": self.condition, "famille": FAMILLES.get(self.code)}
+                "condition": self.condition, "famille": FAMILLES.get(self.code), "administration": self.administration}
 
 
 def _preuves_df(df: pd.DataFrame, colonnes: dict[str, str], source: str, limite: int = 200) -> dict:

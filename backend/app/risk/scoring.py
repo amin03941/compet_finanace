@@ -32,6 +32,7 @@ CATEGORIES = {
     "gris": "Données insuffisantes",
     "vert": "Cohérent",
 }
+ORDRE_CATEGORIES = {"rouge": 0, "orange": 1, "gris": 2, "vert": 3}
 
 
 def _json_default(o):
@@ -188,7 +189,10 @@ def calculer(engine: Engine | None = None, avec_evaluation: bool = True) -> dict
     score = 100 * (explain.POIDS_SCORE["proba"] * p + explain.POIDS_SCORE["regles"] * s_reg + explain.POIDS_SCORE["anomalie"] * anom)
     montant = pd.Series({e: lignes[e]["montant"] for e in ids})
     priorite = p * montant
-    ordre = pd.DataFrame({"priorite": priorite, "score": score}).sort_values(["priorite", "score"], ascending=False)
+    categories = pd.Series({e: ORDRE_CATEGORIES[lignes[e]["categorie"]] for e in ids})
+    # rang d'affichage : la catégorie décidée par les règles d'abord, puis la priorité à l'intérieur de chaque catégorie
+    ordre = pd.DataFrame({"cat": categories, "priorite": priorite, "score": score}).sort_values(
+        ["cat", "priorite", "score"], ascending=[True, False, False])
     rang = pd.Series(np.arange(1, len(ordre) + 1), index=ordre.index)
     moyennes = {"score": float(score.mean()), "proba": float(p.mean()), "regles": float(s_reg.mean()), "anomalie": float(anom.mean())}
 

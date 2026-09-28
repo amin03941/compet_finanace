@@ -102,34 +102,80 @@ def calculer(ctx: Contexte, eid: int, indices: list[dict], reference: date | Non
         lignes.append({"cle": "tva_deduite_trop", "libelle": "TVA déduite en trop à l'import", "montant": tva_trop,
                        "formule": f"{fmt.dt(a.tva_deductible_import)} déduits − {fmt.dt(paye)} payés en douane",
                        "source": "Déclarations de TVA / douane (règle A3)"})
-    # --- autres enjeux déjà chiffrés par les règles
-    autres = {"A4": "TVA sur exportations non justifiées", "B2": "Droits et TVA éludés (sous-évaluation en douane)",
-              "C2": "TVA suspendue sur équipements revendus"}
-    tva_autres = 0.0
-    for code, lib in autres.items():
-        if code in dec and dec[code]["montant_en_jeu"] > 0:
-            tva_autres += dec[code]["montant_en_jeu"]
-            lignes.append({"cle": f"enjeu_{code}", "libelle": lib, "montant": dec[code]["montant_en_jeu"],
-                           "formule": f"Montant en jeu de l'indice {code}", "source": f"Règle {code}"})
+    # --- autres enjeux fiscaux déjà chiffrés par les règles (DGI)
+    tva_a4 = 0.0
+    if "A4" in dec and dec["A4"]["montant_en_jeu"] > 0:
+        tva_a4 = dec["A4"]["montant_en_jeu"]
+        lignes.append({"cle": "enjeu_A4", "libelle": "TVA sur exportations non justifiées", "montant": tva_a4,
+                       "formule": "Montant en jeu de l'indice A4", "source": "Règle A4"})
     if base_ventes is None and ("A5" in dec or "B3" in dec):  # TVA non reversée
         code = "B3" if "B3" in dec else "A5"
         tva_omise = dec[code]["montant_en_jeu"]
         lignes.append({"cle": "tva_non_reversee", "libelle": "TVA non reversée (estimation)", "montant": tva_omise,
                        "formule": f"Montant en jeu de l'indice {code}", "source": f"Règle {code}"})
+    for l in lignes:
+        l["partie"] = "dgi"
     total_tva = tva_omise + tva_trop
-    total = total_tva + tva_autres
-    if total_tva > 0:
-        lignes.append({"cle": "total_tva", "libelle": "Total TVA estimée", "montant": total_tva,
-                       "formule": " + ".join(fmt.dt(x) for x in (tva_omise, tva_trop) if x), "source": "Calcul", "total": True})
-    if tva_autres > 0:
-        lignes.append({"cle": "total_estime", "libelle": "Total des droits et taxes en jeu", "montant": total,
-                       "formule": " + ".join(fmt.dt(x) for x in (total_tva, tva_autres) if x), "source": "Calcul", "total": True})
-    # --- IS et pénalités : indicatifs
+    total_dgi = total_tva + tva_a4
+
+    # --- partie douane : sous-évaluation (B2) détaillée déclaration par déclaration, avantages revendus (C2)
+    lignes_douane: list[dict] = []
+    ecart_valeur = droits = tva_import = 0.0
+    if "B2" in dec:
+        from ..risk.rules import REGLES_PAR_CODE
+
+        annee_b2 = int(dec["B2"]["annee"])
+        d = REGLES_PAR_CODE["B2"]._lignes(ctx)
+        d = d[(d.entreprise_id == eid) & (d.date.dt.year == annee_b2)]
+        ecarts = (d.prix_unitaire_median * d.quantite - d.valeur_cif_dt).clip(lower=0)
+        droits_l = ecarts * d.taux_droits
+        valeur_ref, valeur_decl = float((d.prix_unitaire_median * d.quantite).sum()), float(d.valeur_cif_dt.sum())
+        ecart_valeur, droits = float(ecarts.sum()), float(droits_l.sum())
+        tva_import = float(((ecarts + droits_l) * taux_tva).sum())
+        taux_moyen = droits / ecart_valeur if ecart_valeur else 0.0
+        n_decl = int(d.numero_declaration.nunique())
+        lignes_douane += [
+            {"cle": "valeur_reference", "libelle": "Valeur au prix de référence", "montant": valeur_ref,
+             "formule": f"Σ prix de référence médian × quantité ({n_decl} déclarations {annee_b2})",
+             "source": "Référentiel de prix (même produit, même origine)"},
+            {"cle": "valeur_declaree", "libelle": "Valeur déclarée en douane", "montant": valeur_decl,
+             "formule": f"Σ valeur CIF déclarée ({n_decl} déclarations {annee_b2})", "source": "Déclarations en douane"},
+            {"cle": "ecart_valeur", "libelle": "Écart de valeur", "montant": ecart_valeur,
+             "formule": "Σ (prix de référence − prix déclaré) × quantité", "source": "Calcul"},
+            {"cle": "droits_eludes", "libelle": "Droits de douane éludés", "montant": droits,
+             "formule": f"{fmt.dt(ecart_valeur)} × taux de droits de chaque déclaration ({fmt.pct(taux_moyen)} en moyenne pondérée)",
+             "source": "Tarif appliqué dans les déclarations en douane"},
+            {"cle": "tva_import_eludee", "libelle": "TVA à l'import éludée", "montant": tva_import,
+             "formule": f"({fmt.dt(ecart_valeur)} + {fmt.dt(droits)}) × {fmt.pct(taux_tva, 0)}", "source": tva_src,
+             "a_verifier": tva_a_verif},
+        ]
+    enjeu_c2 = 0.0
+    if "C2" in dec and dec["C2"]["montant_en_jeu"] > 0:
+        enjeu_c2 = dec["C2"]["montant_en_jeu"]
+        lignes_douane.append({"cle": "enjeu_C2", "libelle": "TVA suspendue sur équipements exonérés revendus", "montant": enjeu_c2,
+                              "formule": "Montant en jeu de l'indice C2", "source": "Règle C2"})
+    total_douane = droits + tva_import + enjeu_c2
+    for l in lignes_douane:
+        l["partie"] = "douane"
+
+    # --- totaux séparés : chaque administration perçoit ses propres droits et taxes
+    if total_dgi > 0:
+        lignes.append({"cle": "total_dgi", "libelle": "Total — impôts perçus par la DGI", "montant": total_dgi,
+                       "formule": " + ".join(fmt.dt(x) for x in (tva_omise, tva_trop, tva_a4) if x), "source": "Calcul",
+                       "total": True, "partie": "dgi"})
+    if total_douane > 0:
+        lignes_douane.append({"cle": "total_douane", "libelle": "Total — droits et taxes perçus par la douane",
+                              "montant": total_douane,
+                              "formule": " + ".join(fmt.dt(x) for x in (droits, tva_import, enjeu_c2) if x), "source": "Calcul",
+                              "total": True, "partie": "douane"})
+    total = total_dgi + total_douane
+
+    # --- IS et pénalités (DGI) : indicatifs, seulement s'il y a des ventes omises ou de la TVA due
     is_indicatif = ecart_ventes * marge_ref * taux_is
     if is_indicatif > 0:
         lignes.append({"cle": "is_indicatif", "libelle": "Impôt sur les sociétés (indicatif)", "montant": is_indicatif,
                        "formule": f"{fmt.dt(ecart_ventes)} × {fmt.pct(marge_ref)} × {fmt.pct(taux_is, 0)}",
-                       "source": is_src, "a_verifier": is_a_verif, "indicatif": True})
+                       "source": is_src, "a_verifier": is_a_verif, "indicatif": True, "partie": "dgi"})
     penalites, mois_moyens = 0.0, 0.0
     if total_tva > 0:
         # TVA supposée exigible mois par mois sur l'année ; échéance le 28 du mois suivant
@@ -142,30 +188,45 @@ def calculer(ctx: Contexte, eid: int, indices: list[dict], reference: date | Non
         lignes.append({"cle": "penalites", "libelle": "Pénalités de retard (indicatives)", "montant": penalites,
                        "formule": f"{fmt.pct(taux_pen, 2)} par mois ou fraction de mois × {mois_moyens:.1f} mois en moyenne "
                                   f"(échéances {annee} → {fmt.date_fr(reference)})".replace(".", ","),
-                       "source": pen_src, "indicatif": True, "article": "cdpf_2024__code_des_droits_et_procedures_fiscaux_article_81"})
-    hypotheses += [
-        f"Taux de TVA de {fmt.pct(taux_tva, 0)} : paramètre à vérifier dans le code de la TVA (non indexé).",
-        f"Taux d'IS de {fmt.pct(taux_is, 0)} : paramètre à vérifier dans le code de l'IRPP et de l'IS (non indexé).",
-        "Pénalités : 1,25 % par mois ou fraction de mois (article 81 du code des droits et procédures fiscaux), "
-        f"calculées jusqu'au {fmt.date_fr(reference)} à titre indicatif.",
-    ]
+                       "source": pen_src, "indicatif": True, "partie": "dgi",
+                       "article": "cdpf_2024__code_des_droits_et_procedures_fiscaux_article_81"})
+    lignes += lignes_douane
+    cles = {l["cle"] for l in lignes}
+    # hypothèses : uniquement celles qui correspondent à une ligne réellement calculée, rangées par administration
+    hyp = {"dgi": list(hypotheses), "douane": []}
+    tva = f"Taux de TVA de {fmt.pct(taux_tva, 0)} : paramètre à vérifier dans le code de la TVA (non indexé)."
+    if "tva_ventes_omises" in cles:
+        hyp["dgi"].append(tva)
+    if "is_indicatif" in cles:
+        hyp["dgi"].append(f"Taux d'IS de {fmt.pct(taux_is, 0)} : paramètre à vérifier dans le code de l'IRPP et de l'IS (non indexé).")
+    if "penalites" in cles:
+        hyp["dgi"].append("Pénalités : 1,25 % par mois ou fraction de mois (article 81 du code des droits et procédures fiscaux), "
+                          f"calculées jusqu'au {fmt.date_fr(reference)} à titre indicatif.")
+    if "tva_import_eludee" in cles:
+        hyp["douane"].append(tva)
+    if "ecart_valeur" in cles:
+        hyp["douane"] += ["Prix de référence : médiane des prix unitaires déclarés pour le même produit (code SH) et la même origine.",
+                          "Droits éludés : taux de droits figurant sur chaque déclaration en douane concernée."]
+    hypotheses = list(dict.fromkeys(hyp["dgi"] + hyp["douane"]))
     for l in lignes:
         l["montant"] = round(float(l["montant"]), 2)
         l["montant_affiche"] = fmt.dt(l["montant"])
     return {
         "annee": annee, "lignes": lignes, "base_ventes": base_ventes, "ecart_ca": round(ecart_ventes, 2),
         "tva_ventes_omises": round(tva_omise, 2), "tva_deduite_en_trop": round(tva_trop, 2),
-        "total_tva": round(total_tva, 2), "autres_enjeux": round(tva_autres, 2), "total_estime": round(total, 2),
-        "is_indicatif": round(is_indicatif, 2), "penalites_indicatives": round(penalites, 2),
+        "total_tva": round(total_tva, 2), "total_dgi": round(total_dgi, 2), "total_douane": round(total_douane, 2),
+        "ecart_valeur": round(ecart_valeur, 2), "droits_eludes": round(droits, 2), "tva_import_eludee": round(tva_import, 2),
+        "total_estime": round(total, 2), "is_indicatif": round(is_indicatif, 2), "penalites_indicatives": round(penalites, 2),
         "parametres": {"taux_tva": taux_tva, "taux_is": taux_is, "taux_penalite_mensuel": taux_pen, "marge_mediane_secteur": marge_ref},
-        "hypotheses": hypotheses, "mention": MENTION, "date_reference": reference.isoformat(),
+        "hypotheses": hypotheses, "hypotheses_par_partie": hyp, "mention": MENTION, "date_reference": reference.isoformat(),
     }
 
 
 def montants_autorises(calc: dict) -> set[str]:
     """Montants (formatés) que la rédaction a le droit de citer."""
-    vals = {calc[k] for k in ("ecart_ca", "tva_ventes_omises", "tva_deduite_en_trop", "total_tva", "total_estime",
-                              "is_indicatif", "penalites_indicatives")}
+    vals = {calc.get(k, 0.0) for k in ("ecart_ca", "tva_ventes_omises", "tva_deduite_en_trop", "total_tva", "total_dgi",
+                                       "total_douane", "ecart_valeur", "droits_eludes", "tva_import_eludee", "total_estime",
+                                       "is_indicatif", "penalites_indicatives")}
     vals |= {l["montant"] for l in calc["lignes"]}
     out = set()
     for v in vals:

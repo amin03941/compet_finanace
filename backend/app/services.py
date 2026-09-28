@@ -12,8 +12,8 @@ from sqlalchemy import text
 from . import db, fmt
 from .risk.evaluation import LIBELLES_SCHEMAS
 from .risk.features import ANNEES, Contexte, charger_contexte
-from .risk.rules import REGLES, REGLES_PAR_CODE
-from .risk.scoring import CATEGORIES
+from .risk.rules import REGLES, REGLES_PAR_CODE, TYPES_DOSSIER, preuve_douaniere, type_dossier
+from .risk.scoring import CATEGORIES, ORDRE_CATEGORIES
 
 _ctx_lock = threading.Lock()
 
@@ -31,6 +31,7 @@ def contexte() -> Contexte:
 def invalider_caches() -> None:
     _contexte.cache_clear()
     _scores.cache_clear()
+    _scores_enrichis.cache_clear()
 
 
 @lru_cache(maxsize=1)
@@ -44,8 +45,22 @@ def _scores() -> pd.DataFrame:
         LEFT JOIN secteurs_reference r ON r.secteur_groupe = e.secteur_groupe""")
 
 
+@lru_cache(maxsize=1)
+def _scores_enrichis() -> pd.DataFrame:
+    """Scores + type de dossier (déduit des indices) + rang d'affichage : d'abord la catégorie décidée par les règles
+    (rouge, orange, gris, vert), puis la priorité (probabilité × montant) à l'intérieur de chaque catégorie."""
+    s = _scores().copy()
+    codes = s.regles_declenchees.map(json.loads)
+    s["type_dossier"] = [type_dossier(c) if cat != "vert" else None for c, cat in zip(codes, s.categorie)]
+    s["preuve_douaniere"] = [preuve_douaniere(c) for c in codes]
+    s["ordre_categorie"] = s.categorie.map(ORDRE_CATEGORIES)
+    s = s.sort_values(["ordre_categorie", "priorite", "score"], ascending=[True, False, False], kind="mergesort")
+    s["rang"] = np.arange(1, len(s) + 1)
+    return s
+
+
 def scores() -> pd.DataFrame:
-    return _scores().copy()
+    return _scores_enrichis().copy()
 
 
 def metrique(cle: str):
@@ -60,6 +75,7 @@ def _ligne_liste(r: pd.Series) -> dict:
         "categorie": r.categorie, "categorie_libelle": CATEGORIES[r.categorie], "probabilite": float(r.probabilite),
         "montant_en_jeu": float(r.montant_en_jeu), "priorite": float(r.priorite),
         "regles": json.loads(r.regles_declenchees), "premiere_raison": r.premiere_raison,
+        "type_dossier": r.type_dossier, "type_libelle": TYPES_DOSSIER.get(r.type_dossier) if r.type_dossier else None,
     }
 
 
@@ -87,6 +103,12 @@ def statistiques() -> dict:
                                         oranges=("categorie", lambda c: int((c == "orange").sum())),
                                         entreprises=("id", "size")).reset_index()
     gouv = gouv.sort_values(["rouges", "oranges"], ascending=False)
+    # répartition des alertes par administration compétente (type de dossier)
+    par_admin = []
+    for t, lib in TYPES_DOSSIER.items():
+        a = alertes[alertes.type_dossier == t]
+        par_admin.append({"type": t, "libelle": lib, "rouges": int((a.categorie == "rouge").sum()),
+                          "oranges": int((a.categorie == "orange").sum()), "montant": float(a.montant_en_jeu.sum())})
     resume = perf.get("resume", {})
     top5 = s.sort_values("rang").head(5)
     return {
@@ -103,6 +125,7 @@ def statistiques() -> dict:
         "distribution_scores": distribution,
         "montant_par_indice": sorted(par_regle.values(), key=lambda x: -x["montant"]),
         "alertes_par_gouvernorat": gouv.to_dict("records"),
+        "alertes_par_administration": par_admin,
         "evolution_mensuelle": metrique("alertes_mensuelles") or [],
         "top5": [_ligne_liste(r) for _, r in top5.iterrows()],
         "calcule_le": calcule_le(),
@@ -111,10 +134,13 @@ def statistiques() -> dict:
 
 # ------------------------------------------------------------------ ciblage
 def liste(categorie: str | None = None, secteur: str | None = None, gouvernorat: str | None = None, regle: str | None = None,
-          q: str | None = None, montant_min: float | None = None, tri: str = "priorite", page: int = 1, taille: int = 50) -> dict:
+          q: str | None = None, montant_min: float | None = None, tri: str = "priorite", page: int = 1, taille: int = 50,
+          type_: str | None = None) -> dict:
     s = scores()
     if categorie:
         s = s[s.categorie.isin(categorie.split(","))]
+    if type_:
+        s = s[s.type_dossier.isin(type_.split(","))]
     if secteur:
         s = s[s.secteur_groupe.isin(secteur.split(","))]
     if gouvernorat:
@@ -127,8 +153,9 @@ def liste(categorie: str | None = None, secteur: str | None = None, gouvernorat:
         s = s[s.raison_sociale.str.lower().str.contains(qq, regex=False) | s.matricule_fiscal.str.lower().str.contains(qq, regex=False)]
     if montant_min:
         s = s[s.montant_en_jeu >= montant_min]
-    ordre = {"priorite": (["priorite", "score"], False), "score": (["score"], False), "montant": (["montant_en_jeu"], False),
-             "nom": (["raison_sociale"], True)}.get(tri, (["priorite", "score"], False))
+    # tri par défaut : la catégorie d'abord (rouge, orange, gris, vert), puis la priorité dans chaque catégorie (= rang)
+    ordre = {"priorite": (["rang"], True), "score": (["score"], False), "montant": (["montant_en_jeu"], False),
+             "nom": (["raison_sociale"], True)}.get(tri, (["rang"], True))
     s = s.sort_values(ordre[0], ascending=ordre[1], kind="mergesort")
     total = len(s)
     page = max(1, page)
@@ -287,7 +314,9 @@ def fiche(eid: int) -> dict | None:
                   "raison_categorie": det["raison_categorie"], "probabilite": float(r.probabilite),
                   "anomalie": float(r.score_anomalie), "force_indices": float(r.force_indices),
                   "montant_en_jeu": float(r.montant_en_jeu), "priorite": float(r.priorite), "rang": int(r.rang),
-                  "total": int(len(s))},
+                  "total": int(len(s)), "type_dossier": r.type_dossier,
+                  "type_libelle": TYPES_DOSSIER.get(r.type_dossier) if r.type_dossier else None,
+                  "preuve_douaniere": bool(r.preuve_douaniere) and r.type_dossier in ("fiscal", "conjoint")},
         "indices": det["indices"], "neutralisations": det["neutralisations"], "cascade": det["cascade"],
         "facilitation": det.get("facilitation"),
         "series": _series(ctx, eid), "reseau": _reseau(ctx, eid, cycle), "donnees_brutes": _donnees_brutes(ctx, eid),
@@ -308,7 +337,7 @@ def preuves(eid: int, code: str) -> dict | None:
 # ------------------------------------------------------------------ facilitation, performance, référentiels
 def facilitation() -> dict:
     s = scores()
-    s = s[s.facilitation.astype(bool)]
+    s = s[s.facilitation.astype(bool) & (s.categorie == "vert")]  # jamais une entreprise grise (données insuffisantes)
     det = db.read_sql("SELECT entreprise_id, details FROM scores WHERE facilitation = 1").set_index("entreprise_id").details
     out = []
     for _, r in s.sort_values("score").iterrows():

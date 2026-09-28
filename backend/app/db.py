@@ -263,6 +263,20 @@ journal_audit = Table(
     Column("details", Text),
 )
 
+# Historique d'un dossier (génération, articles ajoutés / retirés / rétablis, lettre, validation).
+# Ajout seulement : des triggers SQLite refusent toute modification ou suppression (voir create_schema).
+journal_dossier = Table(
+    "journal_dossier", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("dossier_id", Integer, index=True),
+    Column("record_id", String, nullable=True),  # article concerné (record de l'index RAG)
+    Column("article", String, nullable=True),
+    Column("action", String),
+    Column("motif", Text, nullable=True),
+    Column("agent", String),
+    Column("horodatage", String),
+)
+
 metriques = Table(
     "metriques", metadata,
     Column("cle", String, primary_key=True),
@@ -296,6 +310,11 @@ def create_schema(engine: Engine, drop: bool = False) -> None:
     if drop:
         metadata.drop_all(engine)
     metadata.create_all(engine)
+    with engine.begin() as conn:
+        for evenement in ("UPDATE", "DELETE"):
+            conn.execute(text(
+                f"CREATE TRIGGER IF NOT EXISTS journal_dossier_sans_{evenement.lower()} BEFORE {evenement} ON journal_dossier "
+                "BEGIN SELECT RAISE(ABORT, 'journal_dossier : ajout seulement'); END"))
 
 
 def read_sql(query: str, params: dict | None = None, engine: Engine | None = None) -> pd.DataFrame:
